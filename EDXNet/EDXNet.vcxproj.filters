@@ -1,0 +1,158 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files\Core">
+      <UniqueIdentifier>{3aad0a9f-ab3a-45af-9985-71edc43561a3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Data">
+      <UniqueIdentifier>{138b7f70-42ed-4bda-b029-9c93b8041202}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Optimizers">
+      <UniqueIdentifier>{0a043586-67f9-4bbb-ab53-e54f21306bed}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Operators">
+      <UniqueIdentifier>{fb3d70d8-add2-4f81-97e9-ff9d3daa304e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Models">
+      <UniqueIdentifier>{b80105be-2c3e-41b3-b874-ec4584348a9a}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Core\NeuralNet.h">
+      <Filter>Source Files\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\Tensor.h">
+      <Filter>Source Files\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Optimizers\lbfgs.h">
+      <Filter>Source Files\Optimizers</Filter>
+    </ClInclude>
+    <ClInclude Include="Operators\FullyConnected.h">
+      <Filter>Source Files\Operators</Filter>
+    </ClInclude>
+    <ClInclude Include="Operators\Convolution.h">
+      <Filter>Source Files\Operators</Filter>
+    </ClInclude>
+    <ClInclude Include="Operators\Pooling.h">
+      <Filter>Source Files\Operators</Filter>
+    </ClInclude>
+    <ClInclude Include="Operators\Relu.h">
+      <Filter>Source Files\Operators</Filter>
+    </ClInclude>
+    <ClInclude Include="Operators\BatchNormalization.h">
+      <Filter>Source Files\Operators</Filter>
+    </ClInclude>
+    <ClInclude Include="Operators\Dropout.h">
+      <Filter>Source Files\Operators</Filter>
+    </ClInclude>
+    <ClInclude Include="Operators\Softmax.h">
+      <Filter>Source Files\Operators</Filter>
+    </ClInclude>
+    <ClInclude Include="Operators\Sum.h">
+      <Filter>Source Files\Operators</Filter>
+    </ClInclude>
+    <ClInclude Include="Operators\Ones.h">
+      <Filter>Source Files\Operators</Filter>
+    </ClInclude>
+    <ClInclude Include="Operators\Predictor.h">
+      <Filter>Source Files\Operators</Filter>
+    </ClInclude>
+    <ClInclude Include="Operators\StyleTransfer.h">
+      <Filter>Source Files\Operators</Filter>
+    </ClInclude>
+    <ClInclude Include="Data\ImageNet.h">
+      <Filter>Source Files\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="Data\MINST.h">
+      <Filter>Source Files\Data</Filter>
+    </ClInclude>
+    <ClInclude Include="Optimizers\SGD.h">
+      <Filter>Source Files\Optimizers</Filter>
+    </ClInclude>
+    <ClInclude Include="Optimizers\Adam.h">
+      <Filter>Source Files\Optimizers</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\EDXNet.h">
+      <Filter>Source Files\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Operators\Constant.h">
+      <Filter>Source Files\Operators</Filter>
+    </ClInclude>
+    <ClInclude Include="Operators\Variable.h">
+      <Filter>Source Files\Operators</Filter>
+    </ClInclude>
+    <ClInclude Include="Models\LeNet.h">
+      <Filter>Source Files\Models</Filter>
+    </ClInclude>
+    <ClInclude Include="Core\TemplateExpression.h">
+      <Filter>Source Files\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="Models\VGG19.h">
+      <Filter>Source Files\Models</Filter>
+    </ClInclude>
+    <ClInclude Include="Models\StyleTransferVGG19.h">
+      <Filter>Source Files\Models</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Core\NeuralNet.cpp">
+      <Filter>Source Files\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="Optimizers\lbfgs.cpp">
+      <Filter>Source Files\Optimizers</Filter>
+    </ClCompile>
+    <ClCompile Include="Data\ImageNet.cpp">
+      <Filter>Source Files\Data</Filter>
+    </ClCompile>
+    <ClCompile Include="Operators\Sum.cpp">
+      <Filter>Source Files\Operators</Filter>
+    </ClCompile>
+    <ClCompile Include="Models\LeNet.cpp">
+      <Filter>Source Files\Models</Filter>
+    </ClCompile>
+    <ClCompile Include="Operators\Convolution.cpp">
+      <Filter>Source Files\Operators</Filter>
+    </ClCompile>
+    <ClCompile Include="Operators\Relu.cpp">
+      <Filter>Source Files\Operators</Filter>
+    </ClCompile>
+    <ClCompile Include="Operators\Softmax.cpp">
+      <Filter>Source Files\Operators</Filter>
+    </ClCompile>
+    <ClCompile Include="Operators\FullyConnected.cpp">
+      <Filter>Source Files\Operators</Filter>
+    </ClCompile>
+    <ClCompile Include="Operators\Pooling.cpp">
+      <Filter>Source Files\Operators</Filter>
+    </ClCompile>
+    <ClCompile Include="Models\VGG19.cpp">
+      <Filter>Source Files\Models</Filter>
+    </ClCompile>
+    <ClCompile Include="Operators\StyleTransfer.cpp">
+      <Filter>Source Files\Operators</Filter>
+    </ClCompile>
+    <ClCompile Include="Models\StyleTransferVGG19.cpp">
+      <Filter>Source Files\Models</Filter>
+    </ClCompile>
+    <ClCompile Include="Operators\Dropout.cpp">
+      <Filter>Source Files\Operators</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="TensorVis.natvis">
+      <Filter>Source Files</Filter>
+    </Natvis>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  
+  <!-- Tensor visualizer -->
+  <Type Name="EDX::DeepLearning::Tensor&lt;*&gt;">
+    <DisplayString Condition="mIndex.mLinearSize == 0">Empty</DisplayString>
+    <DisplayString Condition="mIndex.mLinearSize &lt; 0">Invalid</DisplayString>
+    <DisplayString Condition="mIndex.mLinearSize &gt;= 0">Size={mIndex.mLinearSize}</DisplayString>
+    <Expand>
+      <ArrayItems Condition="mIndex.mLinearSize &gt;= 0">
+        <Size>mIndex.mLinearSize</Size>
+        <ValuePointer>($T1*)mpData</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
+</AutoVisualizer>
