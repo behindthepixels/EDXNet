@@ -6,9 +6,9 @@ A numpy like multi-dimensional tensor library is also included. Template express
 Currently it only supports some of the most common operators like fully connected, convolution, pooling, batchnorm etc. With these simple operators EDXNet can already do many interesting tasks such as training a digit recognition neural net, image classification and even style transfer. The following is one sample result of running style transfer with EDXNet.
 
 <div align="center">
- <img src="https://raw.githubusercontent.com/behindthepixels/EDXNet/master/StyleTransfer/coffee.jpg" height="223px">
- <img src="https://raw.githubusercontent.com/behindthepixels/EDXNet/master/StyleTransfer/picasso_selfport1907.jpg" height="223px">
- <img src="https://raw.githubusercontent.com/behindthepixels/EDXNet/master/StyleTransfer/Coffee_Picaaso.jpg height="223px">
+ <img src="https://raw.githubusercontent.com/behindthepixels/EDXNet/master/StyleTransfer/coffee.jpg" height="400px">
+ <img src="https://raw.githubusercontent.com/behindthepixels/EDXNet/master/StyleTransfer/picasso_selfport1907.jpg" height="400px">
+ <img src="https://raw.githubusercontent.com/behindthepixels/EDXNet/master/StyleTransfer/Coffee_Picaaso.jpg" height="400px">
 </div>
 
 More operators and features such as RNN, as well as GPU support is planned in the near future.
