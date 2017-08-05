@@ -29,13 +29,13 @@ namespace EDX
 
 		public:
 			static StyleTransferVGG19 Create(const TCHAR* weightsPath,
-				const float contentWeight = 5e0f,
-				const float styleWeight = 1e4f,
-				const float totalVariationWeight = 1e-2f);
+				const float contentWeight = 5.0f,
+				const float styleWeight = 400.0f,
+				const float totalVariationWeight = 1e-3f);
 			static StyleTransferVGG19 Create(const VGG19Weights& weights,
-				const float contentWeight = 5e0f,
-				const float styleWeight = 1e4f,
-				const float totalVariationWeight = 1e-2f);
+				const float contentWeight = 5.0f,
+				const float styleWeight = 400.0f,
+				const float totalVariationWeight = 1e-3f);
 		};
 	}
 }

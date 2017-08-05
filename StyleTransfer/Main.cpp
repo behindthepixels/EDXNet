@@ -68,9 +68,9 @@ void main()
 	// ------------------------------------------------------------------------------
 
 	// Default weights
-	float contentWeight = 5e0f;
-	float styleWeight = 1e4f;
-	float tvWeight = 1e-2f;
+	float contentWeight = 5.0f;
+	float styleWeight = 400.0f;
+	float tvWeight = 1e-3f;
 	StyleTransferVGG19 styleTransfer = StyleTransferVGG19::Create("../Models/VGG19.dat", contentWeight, styleWeight, tvWeight);
 
 	styleTransfer.contentNet.input->SetData(contentImageTensor);
