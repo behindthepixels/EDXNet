@@ -37,7 +37,7 @@ namespace EDX
 			net.styleNet = VGG19::CreateForInference(weights);
 			net.transferNet = VGG19::CreateForInference(weights, true);
 
-			net.contentLoss = NeuralNet::Create<ContentLoss>(net.transferNet.relu4_2, net.contentNet.relu4_2);
+			net.contentLoss = NeuralNet::Create<ContentLoss>(net.transferNet.conv4_2, net.contentNet.conv4_2);
 
 			net.styleLoss1 = NeuralNet::Create<StyleLoss>(net.transferNet.relu1_1, net.styleNet.relu1_1);
 			net.styleLoss2 = NeuralNet::Create<StyleLoss>(net.transferNet.relu2_1, net.styleNet.relu2_1);

@@ -452,7 +452,7 @@ namespace EDX
 
 				if (mInputs[2])
 				{
-					const Tensorf& totalVariationLoss = mInputs[1]->GetOutput();
+					const Tensorf& totalVariationLoss = mInputs[2]->GetOutput();
 					output += Scalar(mTotalVariartionWeight) * totalVariationLoss;
 				}
 			}
