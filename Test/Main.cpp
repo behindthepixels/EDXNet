@@ -201,7 +201,7 @@ void TestPooling()
 	Tensorf input = Tensorf::LinSpace(-0.3f, 0.4f, Algorithm::Accumulate(xShape, 1, Algorithm::Multiply<>())).Reshape(xShape);
 
 	Symbol* x = NeuralNet::Create<Variable>(input);
-	Symbol* pooling = NeuralNet::Create<Pooling>(x, Array<int>({ 2,2 }), Array<int>({ 2,2 }), Array<int>({ 0,0 }));
+	Symbol* pooling = NeuralNet::Create<MaxPooling>(x, Array<int>({ 2,2 }), Array<int>({ 2,2 }), Array<int>({ 0,0 }));
 
 	NeuralNet net(pooling, true);
 

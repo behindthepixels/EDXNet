@@ -4,7 +4,6 @@
 #include "../Operators/Variable.h"
 #include "../Operators/FullyConnected.h"
 #include "../Operators/Convolution.h"
-#include "../Operators/Pooling.h"
 #include "../Operators/Relu.h"
 #include "../Operators/Softmax.h"
 #include "../Operators/Predictor.h"
@@ -15,6 +14,7 @@ namespace EDX
 {
 	namespace DeepLearning
 	{
+		template<typename PoolingOpType>
 		void VGG19::CreateLayers()
 		{
 			// conv 64x3x3
@@ -22,14 +22,14 @@ namespace EDX
 			relu1_1 = NeuralNet::Create<Relu>(conv1_1);
 			conv1_2 = NeuralNet::Create<Convolution>(relu1_1, weights.conv1_2_Weights, weights.conv1_2_Biases, Array<int>({ 3, 3 }), 64, Array<int>({ 1, 1 }), Array<int>({ 1, 1 }));
 			relu1_2 = NeuralNet::Create<Relu>(conv1_2);
-			pool1 = NeuralNet::Create<Pooling>(relu1_2, Array<int>({ 2, 2 }), Array<int>({ 2, 2 }), Array<int>({ 0, 0 }));
+			pool1 = NeuralNet::Create<PoolingOpType>(relu1_2, Array<int>({ 2, 2 }), Array<int>({ 2, 2 }), Array<int>({ 0, 0 }));
 
 			// conv 128x3x3
 			conv2_1 = NeuralNet::Create<Convolution>(pool1, weights.conv2_1_Weights, weights.conv2_1_Biases, Array<int>({ 3, 3 }), 128, Array<int>({ 1, 1 }), Array<int>({ 1, 1 }));
 			relu2_1 = NeuralNet::Create<Relu>(conv2_1);
 			conv2_2 = NeuralNet::Create<Convolution>(relu2_1, weights.conv2_2_Weights, weights.conv2_2_Biases, Array<int>({ 3, 3 }), 128, Array<int>({ 1, 1 }), Array<int>({ 1, 1 }));
 			relu2_2 = NeuralNet::Create<Relu>(conv2_2);
-			pool2 = NeuralNet::Create<Pooling>(relu2_2, Array<int>({ 2, 2 }), Array<int>({ 2, 2 }), Array<int>({ 0, 0 }));
+			pool2 = NeuralNet::Create<PoolingOpType>(relu2_2, Array<int>({ 2, 2 }), Array<int>({ 2, 2 }), Array<int>({ 0, 0 }));
 
 			// conv 256x3x3
 			conv3_1 = NeuralNet::Create<Convolution>(pool2, weights.conv3_1_Weights, weights.conv3_1_Biases, Array<int>({ 3, 3 }), 256, Array<int>({ 1, 1 }), Array<int>({ 1, 1 }));
@@ -40,7 +40,7 @@ namespace EDX
 			relu3_3 = NeuralNet::Create<Relu>(conv3_3);
 			conv3_4 = NeuralNet::Create<Convolution>(relu3_3, weights.conv3_4_Weights, weights.conv3_4_Biases, Array<int>({ 3, 3 }), 256, Array<int>({ 1, 1 }), Array<int>({ 1, 1 }));
 			relu3_4 = NeuralNet::Create<Relu>(conv3_4);
-			pool3 = NeuralNet::Create<Pooling>(relu3_4, Array<int>({ 2, 2 }), Array<int>({ 2, 2 }), Array<int>({ 0, 0 }));
+			pool3 = NeuralNet::Create<PoolingOpType>(relu3_4, Array<int>({ 2, 2 }), Array<int>({ 2, 2 }), Array<int>({ 0, 0 }));
 
 			// conv 512x3x3
 			conv4_1 = NeuralNet::Create<Convolution>(pool3, weights.conv4_1_Weights, weights.conv4_1_Biases, Array<int>({ 3, 3 }), 512, Array<int>({ 1, 1 }), Array<int>({ 1, 1 }));
@@ -51,7 +51,7 @@ namespace EDX
 			relu4_3 = NeuralNet::Create<Relu>(conv4_3);
 			conv4_4 = NeuralNet::Create<Convolution>(relu4_3, weights.conv4_4_Weights, weights.conv4_4_Biases, Array<int>({ 3, 3 }), 512, Array<int>({ 1, 1 }), Array<int>({ 1, 1 }));
 			relu4_4 = NeuralNet::Create<Relu>(conv4_4);
-			pool4 = NeuralNet::Create<Pooling>(relu4_4, Array<int>({ 2, 2 }), Array<int>({ 2, 2 }), Array<int>({ 0, 0 }));
+			pool4 = NeuralNet::Create<PoolingOpType>(relu4_4, Array<int>({ 2, 2 }), Array<int>({ 2, 2 }), Array<int>({ 0, 0 }));
 
 			// conv 512_2x3x3
 			conv5_1 = NeuralNet::Create<Convolution>(pool4, weights.conv5_1_Weights, weights.conv5_1_Biases, Array<int>({ 3, 3 }), 512, Array<int>({ 1, 1 }), Array<int>({ 1, 1 }));
@@ -62,7 +62,7 @@ namespace EDX
 			relu5_3 = NeuralNet::Create<Relu>(conv5_3);
 			conv5_4 = NeuralNet::Create<Convolution>(relu5_3, weights.conv5_4_Weights, weights.conv5_4_Biases, Array<int>({ 3, 3 }), 512, Array<int>({ 1, 1 }), Array<int>({ 1, 1 }));
 			relu5_4 = NeuralNet::Create<Relu>(conv5_4);
-			pool5 = NeuralNet::Create<Pooling>(relu5_4, Array<int>({ 2, 2 }), Array<int>({ 2, 2 }), Array<int>({ 0, 0 }));
+			pool5 = NeuralNet::Create<PoolingOpType>(relu5_4, Array<int>({ 2, 2 }), Array<int>({ 2, 2 }), Array<int>({ 0, 0 }));
 
 			if (weights.withFullyConnected)
 			{
@@ -78,7 +78,10 @@ namespace EDX
 			}
 		}
 
-		VGG19 VGG19::CreateForInference(const TCHAR* weightsPath, const bool withFullyConnected, const bool isInputVariable)
+		VGG19 VGG19::CreateForInference(const TCHAR* weightsPath,
+			const bool withFullyConnected,
+			const bool isInputVariable,
+			const PoolingType poolingType)
 		{
 			VGG19Weights weights(withFullyConnected);
 			weights.CreateConstant();
@@ -90,7 +93,9 @@ namespace EDX
 			return CreateForInference(weights, isInputVariable);
 		}
 
-		VGG19 VGG19::CreateForInference(const VGG19Weights& weights, const bool isInputVariable)
+		VGG19 VGG19::CreateForInference(const VGG19Weights& weights,
+			const bool isInputVariable,
+			const PoolingType poolingType)
 		{
 			VGG19 net;
 
@@ -101,12 +106,15 @@ namespace EDX
 			// Weights have to be pre-initialized
 			net.weights = weights;
 
-			net.CreateLayers();
+			if (poolingType == PoolingType::Max)
+				net.CreateLayers<MaxPooling>();
+			else if (poolingType == PoolingType::Average)
+				net.CreateLayers<AvgPooling>();
 
 			return net;
 		}
 
-		VGG19 VGG19::CreateForTraining(const Tensorf& data, const Tensorf& labels)
+		VGG19 VGG19::CreateForTraining(const Tensorf& data, const Tensorf& labels, const PoolingType poolingType)
 		{
 			VGG19 net;
 
@@ -116,7 +124,10 @@ namespace EDX
 			net.weights.withFullyConnected = true;
 			net.weights.CreateVariable();
 
-			net.CreateLayers();
+			if (poolingType == PoolingType::Max)
+				net.CreateLayers<MaxPooling>();
+			else if (poolingType == PoolingType::Average)
+				net.CreateLayers<AvgPooling>();
 
 			return net;
 		}

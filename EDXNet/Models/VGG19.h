@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Core/NeuralNet.h"
+#include "../Operators/Pooling.h"
 
 namespace EDX
 {
@@ -135,12 +136,18 @@ namespace EDX
 			friend Stream& operator << (Stream& stream, VGG19& net);
 			friend Stream& operator >> (Stream& stream, VGG19& net);
 
+			template<typename PoolingOpType>
 			void CreateLayers();
 
-			static VGG19 CreateForInference(const TCHAR* weightsPath, const bool withFullyConnected = true, const bool isInputVariable = false);
-			static VGG19 CreateForTraining(const Tensorf& data, const Tensorf& labels);
+			static VGG19 CreateForInference(const TCHAR* weightsPath,
+				const bool withFullyConnected = true,
+				const bool isInputVariable = false,
+				const PoolingType poolingType = PoolingType::Max);
+			static VGG19 CreateForTraining(const Tensorf& data, const Tensorf& labels, const PoolingType poolingType = PoolingType::Max);
 
-			static VGG19 CreateForInference(const VGG19Weights& weights, const bool isInputVariable = false);
+			static VGG19 CreateForInference(const VGG19Weights& weights,
+				const bool isInputVariable = false,
+				const PoolingType poolingType = PoolingType::Max);
 		};
 
 	}

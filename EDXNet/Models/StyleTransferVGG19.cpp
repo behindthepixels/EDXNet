@@ -33,9 +33,9 @@ namespace EDX
 		{
 			StyleTransferVGG19 net;
 
-			net.contentNet = VGG19::CreateForInference(weights);
-			net.styleNet = VGG19::CreateForInference(weights);
-			net.transferNet = VGG19::CreateForInference(weights, true);
+			net.contentNet = VGG19::CreateForInference(weights, false, PoolingType::Average);
+			net.styleNet = VGG19::CreateForInference(weights, false, PoolingType::Average);
+			net.transferNet = VGG19::CreateForInference(weights, true, PoolingType::Average);
 
 			net.contentLoss = NeuralNet::Create<ContentLoss>(net.transferNet.conv4_2, net.contentNet.conv4_2);
 

@@ -6,6 +6,48 @@ namespace EDX
 {
 	namespace DeepLearning
 	{
+		enum class PoolingType
+		{
+			Max, Average
+		};
+
+		struct MaxPoolOp
+		{
+			static float InitValue()
+			{
+				return Math::EDX_NEG_INFINITY;
+			}
+
+			static void Process(const float x, float& y)
+			{
+				y = Math::Max(x, y);
+			}
+
+			static float Finalize(const float value, const int pooledSize)
+			{
+				return value;
+			}
+		};
+
+		struct AvgPoolOp
+		{
+			static float InitValue()
+			{
+				return 0.0f;
+			}
+
+			static void Process(const float x, float& y)
+			{
+				y += x;
+			}
+
+			static float Finalize(const float value, const int pooledSize)
+			{
+				return value / float(pooledSize);
+			}
+		};
+
+		template<typename Op>
 		class Pooling : public SymbolBase<1, 1>
 		{
 		public:
@@ -49,7 +91,7 @@ namespace EDX
 								int wend = Math::Min(wstart + kernelWidth, width);
 								hstart = Math::Max(hstart, 0);
 								wstart = Math::Max(wstart, 0);
-								float maxVal = Math::EDX_NEG_INFINITY;
+								float pooledVal = Op::InitValue();
 
 								for (int h = hstart; h < hend; ++h)
 								{
@@ -57,14 +99,12 @@ namespace EDX
 									{
 										const int in_index = h * width + w;
 										const float val = inputValue(n, c, h, w);
-										if (val > maxVal)
-										{
-											maxVal = val;
-										}
+
+										Op::Process(val, pooledVal);
 									}
 								}
 
-								output(n, c, ph, pw) = maxVal;
+								output(n, c, ph, pw) = Op::Finalize(pooledVal, (hend - hstart) * (wend - wstart));
 							}
 						}
 					}
@@ -101,6 +141,31 @@ namespace EDX
 			Array<int> mPadding;
 		};
 
+		struct MaxPoolGradOp
+		{
+			static bool Process(const float x, const float y, const float dy, const int pooledSize, float& dx)
+			{
+				if (x == y)
+				{
+					dx += dy;
+					return true;
+				}
+				else
+					return false;
+			}
+		};
+
+		struct AvgPoolGradOp
+		{
+			static bool Process(const float x, const float y, const float dy, const int pooledSize, float& dx)
+			{
+				dx += dy / float(pooledSize);
+
+				return false;
+			}
+		};
+
+		template<typename Op>
 		class PoolingGradient : public SymbolBase<3, 1>
 		{
 		public:
@@ -161,22 +226,19 @@ namespace EDX
 									for (int w = wstart; w < wend; ++w)
 									{
 										const int idx = h * width + w;
-										if (inputValue(n, c, h, w) == pooledValue(n, c, ph, pw))
+
+										if (Op::Process(inputValue(n, c, h, w),
+											pooledValue(n, c, ph, pw),
+											upperGradsAlias(n, c, ph, pw),
+											(hend - hstart) * (wend - wstart),
+											output(n, c, h, w)))
 										{
-											max_idx = { n,c,h,w };
 											found = true;
 											break;
 										}
 									}
 									if (found)
 										break;
-								}
-
-								// In the case where pad > 0 and kernel = 1, for example,
-								// max_idx can be -1 reaching this step.
-								if (!max_idx.Empty())
-								{
-									output(max_idx) += upperGradsAlias(n, c, ph, pw);
 								}
 							}
 						}
@@ -204,5 +266,9 @@ namespace EDX
 			Array<int> mStride;
 			Array<int> mPadding;
 		};
+
+
+		using MaxPooling = Pooling<MaxPoolOp>;
+		using AvgPooling = Pooling<AvgPoolOp>;
 	}
 }
