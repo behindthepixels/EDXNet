@@ -25,7 +25,7 @@ namespace EDX
 
 				Tensorf& loss = GetOutput();
 				const int featureSize = image.LinearSize();
-				loss = Tensorf::Sum(contentDiffSqr) / Scalar(2.0f * Math::Sqrt(featureSize * featureSize));
+				loss = Tensorf::Sum(contentDiffSqr) / Scalar(2.0f * Math::Sqrt(featureSize));
 
 				GetOutput(1) = contentDiff;
 			}
@@ -54,7 +54,7 @@ namespace EDX
 				// TODO: Avoid recomputing this term
 				Tensorf& output = GetOutput();
 				const int featureSize = image.LinearSize();
-				output = pContentLoss->GetOutput(1) / Scalar(1.0f * Math::Sqrt(featureSize * featureSize));
+				output = pContentLoss->GetOutput(1) / Scalar(1.0f * Math::Sqrt(featureSize));
 
 				// Multiply with upper stream gradients
 				output = upperGrads * output;
