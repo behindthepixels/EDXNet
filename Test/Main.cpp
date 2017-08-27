@@ -241,106 +241,99 @@ void TestPooling()
 	NeuralNet::Release();
 }
 
-//void TestBatchNormalizationForward()
-//{
-//	{
-//		// Check the training-time forward pass by checking means and variances
-//		// of features both before and after batch normalization
-//		// Simulate the forward pass for a two-layer network
-//		const int N = 200, D1 = 50, D2 = 60, D3 = 3;
-//		Tensorf X = Tensorf::RandomNormalDistribution(1.0, N, D1);
-//		Tensorf W1 = Tensorf::RandomNormalDistribution(1.0, D1, D2);
-//		Tensorf W2 = Tensorf::RandomNormalDistribution(1.0, D2, D3);
-//		Tensorf a = Tensorf::Dot(Tensorf::ReluActivate(Tensorf::Dot(X, W1)), W2);
-//
-//		// Before batch normalization
-//		Tensorf mean = Tensorf::Mean(a, { 0 });
-//		Tensorf stds = Tensorf::StandardDeviation(a, { 0 });
-//
-//		UniquePtr<Symbol> input = MakeUnique<Variable>(a);
-//		UniquePtr<Symbol> scale = MakeUnique<Variable>(Tensorf::Ones(D3));
-//		UniquePtr<Symbol> bias = MakeUnique<Variable>(Tensorf::Zeroes(D3));
-//
-//		UniquePtr<Symbol> BatchNorm = MakeUnique<BatchNormalization>(input.Get(), scale.Get(), bias.Get(), true, 0.9f);
-//		BatchNorm->Forward();
-//		Tensorf& normalized = BatchNorm->GetOutput();
-//
-//		// After batch normalization (scale=1, bias=0)
-//		// Means should be close to zero and stds close to one
-//		mean = Tensorf::Mean(normalized, { 0 });
-//		stds = Tensorf::StandardDeviation(normalized, { 0 });
-//	}
-//
-//	{
-//		const int N = 200, D1 = 50, D2 = 60, D3 = 3;
-//		Tensorf X = Tensorf::RandomNormalDistribution(1.0, N, D1);
-//		Tensorf W1 = Tensorf::RandomNormalDistribution(1.0, D1, D2);
-//		Tensorf W2 = Tensorf::RandomNormalDistribution(1.0, D2, D3);
-//		Tensorf a = Tensorf::Dot(Tensorf::ReluActivate(Tensorf::Dot(X, W1)), W2);
-//
-//		// Before batch normalization
-//		Tensorf mean = Tensorf::Mean(a, { 0 });
-//		Tensorf stds = Tensorf::StandardDeviation(a, { 0 });
-//
-//		UniquePtr<Symbol> input = MakeUnique<Variable>(a);
-//		UniquePtr<Symbol> scale = MakeUnique<Variable>(Tensorf({ 1,2,3 }));
-//		UniquePtr<Symbol> bias = MakeUnique<Variable>(Tensorf({ 11,12,13 }));
-//
-//		UniquePtr<Symbol> BatchNorm = MakeUnique<BatchNormalization>(input.Get(), scale.Get(), bias.Get(), true, 0.9f);
-//		BatchNorm->Forward();
-//		Tensorf& normalized = BatchNorm->GetOutput();
-//
-//		// After batch normalization
-//		// Now means should be close to bias and stds close to scale
-//		mean = Tensorf::Mean(normalized, { 0 });
-//		stds = Tensorf::StandardDeviation(normalized, { 0 });
-//	}
-//
-//	{
-//		// Check the training-time forward pass by checking means and variances
-//		// of features both before and after batch normalization
-//		// Simulate the forward pass for a two-layer network
-//		const int N = 200, D1 = 50, D2 = 60, D3 = 3;
-//		Tensorf W1 = Tensorf::RandomNormalDistribution(1.0, D1, D2);
-//		Tensorf W2 = Tensorf::RandomNormalDistribution(1.0, D2, D3);
-//
-//		UniquePtr<Symbol> scale = MakeUnique<Constant>(Tensorf::Ones(D3));
-//		UniquePtr<Symbol> bias = MakeUnique<Constant>(Tensorf::Zeroes(D3));
-//
-//		UniquePtr<Variable> input = MakeUnique<Variable>();
-//		UniquePtr<BatchNormalization> BatchNorm = MakeUnique<BatchNormalization>(input.Get(), scale.Get(), bias.Get(), true, 0.9f);
-//
-//		Tensorf X, a;
-//		for (int i = 0; i < 50; i++)
-//		{
-//			X = Tensorf::RandomNormalDistribution(1.0, N, D1);
-//			a = Tensorf::Dot(Tensorf::ReluActivate(Tensorf::Dot(X, W1)), W2);
-//
-//			input->SetData(a);
-//			BatchNorm->Forward();
-//		}
-//
-//		X = Tensorf::RandomNormalDistribution(1.0, N, D1);
-//		a = Tensorf::Dot(Tensorf::ReluActivate(Tensorf::Dot(X, W1)), W2);
-//
-//		input->SetData(a);
-//		BatchNorm->mTraining = false;
-//
-//		BatchNorm->Forward();
-//
-//		// Before batch normalization
-//		Tensorf mean = Tensorf::Mean(a, { 0 });
-//		Tensorf stds = Tensorf::StandardDeviation(a, { 0 });
-//
-//		Tensorf& normalized = BatchNorm->GetOutput();
-//
-//		// After batch normalization (scale=1, bias=0)
-//		// Means should be close to zero and stds close to one
-//		mean = Tensorf::Mean(normalized, { 0 });
-//		stds = Tensorf::StandardDeviation(normalized, { 0 });
-//	}
-//
-//}
+void TestBatchNormalization()
+{
+	{
+		// Check the training-time forward pass by checking means and variances
+		// of features both before and after batch normalization
+		// Simulate the forward pass for a two-layer network
+		//const int N = 200, D1 = 50, D2 = 60, D3 = 3;
+		//Tensorf X = Tensorf::RandomNormalDistribution(1.0, N, D1);
+		//Tensorf W1 = Tensorf::RandomNormalDistribution(1.0, D1, D2);
+		//Tensorf W2 = Tensorf::RandomNormalDistribution(1.0, D2, D3);
+		//Tensorf a = Tensorf::Dot(Tensorf::ReluActivate(Tensorf::Dot(X, W1)), W2);
+
+		Tensorf a = { { 0.438f,0.324f,0.536f },{ 0.12f,0.453f,0.25f },{ 0.983f,0.43f,0.61f } };
+
+		// Before batch normalization
+		Tensorf mean = Tensorf::Mean(a, { 0 });
+		Tensorf stds = Tensorf::StandardDeviation(a, { 0 });
+
+		Symbol* input = NeuralNet::Create<Variable>(a);
+		Symbol* scale = NeuralNet::Create<Variable>(Tensorf({ 1,2,3 }));
+		Symbol* bias = NeuralNet::Create<Variable>(Tensorf({ 11,12,13 }));
+
+		Symbol* BatchNorm = NeuralNet::Create<BatchNormalization>(input, scale, bias, true, 0.9f);
+
+		NeuralNet net(BatchNorm, true);
+
+		Array<Symbol*> symbolsToEvaluate = net.GetGradientSymbols({ input, scale, bias });
+		symbolsToEvaluate.Add(BatchNorm); // Add loss layer
+
+		Tensorf& runningMean = BatchNorm->GetOutput(1);
+		Tensorf& runningVar = BatchNorm->GetOutput(2);
+		runningMean = 0.0f;
+		runningVar = 0.0f;
+
+		net.Execute(symbolsToEvaluate);
+
+		Tensorf& normalized = BatchNorm->GetOutput();
+
+		//// Means should be close to zero and stds close to one
+		//Tensorf normalizedMean = Tensorf::Mean(normalized, { 0 });
+		//Tensorf normalizedStds = Tensorf::StandardDeviation(normalized, { 0 });
+		//std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(normalizedMean - Tensorf({ 11,12,13 }))), 0.0f) << "\n";
+		//std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(normalizedStds - Tensorf({ 1,2,3 }))), 0.0f) << "\n";
+
+		Tensorf dx = symbolsToEvaluate[0]->GetOutput(input->GetGradientIndex());
+		Tensorf dScale = symbolsToEvaluate[1]->GetOutput(scale->GetGradientIndex());
+		Tensorf dBias = symbolsToEvaluate[2]->GetOutput(bias->GetGradientIndex());
+
+		Tensorf upperGrads = Tensorf::Ones(normalized.Shape());
+		Tensorf dxNumeric = NumericalGradientEval([&]() -> Tensorf
+			{
+				Tensorf& runningMean = BatchNorm->GetOutput(1);
+				Tensorf& runningVar = BatchNorm->GetOutput(2);
+
+				runningMean = 0.0f;
+				runningVar = 0.0f;
+
+				net.Execute({ BatchNorm });
+				return BatchNorm->GetOutput();
+			},
+			input, upperGrads, 1e-3f);
+		Tensorf dScaleNumeric = NumericalGradientEval([&]() -> Tensorf
+			{
+				Tensorf& runningMean = BatchNorm->GetOutput(1);
+				Tensorf& runningVar = BatchNorm->GetOutput(2);
+
+				runningMean = 0.0f;
+				runningVar = 0.0f;
+
+				net.Execute({ BatchNorm });
+				return BatchNorm->GetOutput();
+			},
+			scale, upperGrads, 1e-3f);
+		Tensorf dBiasNumeric = NumericalGradientEval([&]() -> Tensorf
+			{
+				Tensorf& runningMean = BatchNorm->GetOutput(1);
+				Tensorf& runningVar = BatchNorm->GetOutput(2);
+
+				runningMean = 0.0f;
+				runningVar = 0.0f;
+
+				net.Execute({ BatchNorm });
+				return BatchNorm->GetOutput();
+			},
+			bias, upperGrads, 1e-3f);
+
+		std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(dx - dxNumeric)), 0.0f) << "\n";
+		std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(dScale - dScaleNumeric)), 0.0f) << "\n";
+		std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(dBias - dBiasNumeric)), 0.0f) << "\n";
+
+		NeuralNet::Release();
+	}
+}
 
 void TestSoftmax()
 {
@@ -580,7 +573,7 @@ void main()
 	TestPooling();
 	TestConvolution();
 	TestSoftmax();
-	//TestBatchNormalizationForward();
+	TestBatchNormalization();
 	//TestDropoutForward();
 	TestAdam();
 	TestStyleLoss();

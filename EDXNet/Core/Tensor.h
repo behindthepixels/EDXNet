@@ -1264,7 +1264,7 @@ namespace EDX
 			{
 				Tensor<T> ret = Sum(X, axises);
 
-				float invDivisor = X.LinearSize() / float(ret.LinearSize());
+				float invDivisor = ret.LinearSize() / float(X.LinearSize());
 				ret *= invDivisor;
 
 				return ret;
@@ -1464,6 +1464,9 @@ namespace EDX
 					}
 				}
 
+				if (projShape.Empty())
+					projShape.Add(1);
+
 				Tensor<T> ret;
 				ret.Assign(initVal, Array<int>(projShape));
 
@@ -1488,6 +1491,9 @@ namespace EDX
 								projIndex.Add(index[i]);
 						}
 					}
+
+					if (projIndex.Empty())
+						projIndex.Add(0);
 
 					ret(projIndex) = op(ret(projIndex), lhs[i]);
 				}

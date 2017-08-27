@@ -51,6 +51,7 @@
     <ClCompile Include="Models\LeNet.cpp" />
     <ClCompile Include="Models\StyleTransferVGG19.cpp" />
     <ClCompile Include="Models\VGG19.cpp" />
+    <ClCompile Include="Operators\BatchNormalization.cpp" />
     <ClCompile Include="Operators\Convolution.cpp" />
     <ClCompile Include="Operators\Dropout.cpp" />
     <ClCompile Include="Operators\FullyConnected.cpp" />

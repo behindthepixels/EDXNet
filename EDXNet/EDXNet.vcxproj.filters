@@ -149,6 +149,9 @@
     <ClCompile Include="Operators\Dropout.cpp">
       <Filter>Source Files\Operators</Filter>
     </ClCompile>
+    <ClCompile Include="Operators\BatchNormalization.cpp">
+      <Filter>Source Files\Operators</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="TensorVis.natvis">
