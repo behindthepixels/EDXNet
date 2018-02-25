@@ -1,0 +1,4 @@
+title: EDXNet
+description: A deep learning library with static computational graph and auto-diff in C++.
+show_downloads: true
+theme: jekyll-theme-minimal
