@@ -1,4 +1,6 @@
 # EDXNet
+Please go to http://behindthepixels.io/EDXNet/ for more detailed introduction.
+
 EDXNet is a deep learning library independently developed by [Edward Liu](http://behindthepixels.io/). It is developed in C++ and only provides C++ interface. It's built with the static computational graph approach like TensorFlow, and implements automatic-differentiation.
 
 A numpy like multi-dimensional tensor library is also included. Template expression is used to make tensor expression evaluation more efficient. 
