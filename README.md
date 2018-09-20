@@ -14,3 +14,5 @@ Currently it only supports some of the most common operators like fully connecte
 </div>
 
 More operators and features such as RNN, as well as GPU support is planned in the near future.
+
+The weights for the pre-trained VGG19 network used by EDXNet can be downloaded from [here](https://www.dropbox.com/s/v4d4o37nmx1jbv3/VGG19.dat?dl=0).
