@@ -22,8 +22,7 @@ void LeNetRun()
 	Tensorf& dataTensor = mnist.GetTestData();
 	Tensorf& labelTensor = mnist.GetTestLabels();
 
-	LeNet leNet = LeNet::CreateForInference("../Models/LeNet.dat");
-	leNet.input = NeuralNet::Create<Constant>(dataTensor);
+	LeNet leNet = LeNet::CreateForInference("../Models/LeNet.dat", dataTensor);
 
 	NeuralNet net(leNet.leNet);
 	net.Execute({ leNet.leNet });
@@ -106,7 +105,7 @@ void LeNetTrain()
 	NeuralNet::Release();
 }
 
-bool bTraining = true;
+bool bTraining = false;
 
 void main()
 {

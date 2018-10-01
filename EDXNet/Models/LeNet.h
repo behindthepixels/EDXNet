@@ -45,7 +45,7 @@ namespace EDX
 			friend Stream& operator << (Stream& stream, LeNet& A);
 			friend Stream& operator >> (Stream& stream, LeNet& A);
 
-			static LeNet CreateForInference(const TCHAR* weightsPath);
+			static LeNet CreateForInference(const TCHAR* weightsPath, const Tensorf& inputTensor);
 			static LeNet CreateForTraining(const Tensorf& data, const Tensorf& labels);
 		};
 

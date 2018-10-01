@@ -15,11 +15,11 @@ namespace EDX
 {
 	namespace DeepLearning
 	{
-		LeNet LeNet::CreateForInference(const TCHAR* weightsPath)
+		LeNet LeNet::CreateForInference(const TCHAR* weightsPath, const Tensorf& inputTensor)
 		{
 			LeNet net;
 
-			net.input = NeuralNet::Create<Constant>();
+			net.input = NeuralNet::Create<Constant>(inputTensor);
 
 			net.conv1Weights = NeuralNet::Create<Constant>();
 			net.conv1Biases = NeuralNet::Create<Constant>();
