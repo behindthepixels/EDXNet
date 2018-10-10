@@ -67,6 +67,9 @@
       <SubType>Designer</SubType>
     </Natvis>
   </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="Kernels\ElementWiseOp.cu" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{A71B6E17-EABD-4259-8F72-B5222FB6FF1C}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
@@ -102,6 +105,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 10.0.props" />
   </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
@@ -127,21 +131,25 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../../EDXUtil/EDXUtil;../../../EDXUtil/EDXUtil</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../EDXUtil/EDXUtil;../../../EDXUtil/EDXUtil;$(CudaToolkitIncludeDir);</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
     </Link>
     <Lib>
-      <AdditionalDependencies>libopenblas.dll.a</AdditionalDependencies>
+      <AdditionalDependencies>libopenblas.dll.a;cudart_static.lib;cublas.lib;</AdditionalDependencies>
     </Lib>
     <Lib>
-      <AdditionalLibraryDirectories>OpenBLAS/lib;</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>OpenBLAS/lib;$(CudaToolkitLibDir);</AdditionalLibraryDirectories>
     </Lib>
     <PostBuildEvent>
       <Command>copy /Y "$(ProjectDir)OpenBLAS\binary\*" "$(TargetDir)"</Command>
     </PostBuildEvent>
+    <CudaCompile>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
+      <CodeGeneration>compute_30,sm_30;compute_35,sm_35;compute_37,sm_37;compute_50,sm_50;compute_52,sm_52;compute_60,sm_60;compute_61,sm_61;compute_70,sm_70;compute_75,sm_75;</CodeGeneration>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -151,21 +159,25 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../../EDXUtil/EDXUtil;../../../EDXUtil/EDXUtil</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../EDXUtil/EDXUtil;../../../EDXUtil/EDXUtil;$(CudaToolkitIncludeDir);</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
     </Link>
     <Lib>
-      <AdditionalDependencies>libopenblas.dll.a</AdditionalDependencies>
+      <AdditionalDependencies>libopenblas.dll.a;cudart_static.lib;cublas.lib;</AdditionalDependencies>
     </Lib>
     <Lib>
-      <AdditionalLibraryDirectories>OpenBLAS/lib;</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>OpenBLAS/lib;$(CudaToolkitLibDir);</AdditionalLibraryDirectories>
     </Lib>
     <PostBuildEvent>
       <Command>copy /Y "$(ProjectDir)OpenBLAS\binary\*" "$(TargetDir)"</Command>
     </PostBuildEvent>
+    <CudaCompile>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
+      <CodeGeneration>compute_30,sm_30;compute_35,sm_35;compute_37,sm_37;compute_50,sm_50;compute_52,sm_52;compute_60,sm_60;compute_61,sm_61;compute_70,sm_70;compute_75,sm_75;</CodeGeneration>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -177,7 +189,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../../EDXUtil/EDXUtil;../../../EDXUtil/EDXUtil</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../EDXUtil/EDXUtil;../../../EDXUtil/EDXUtil;$(CudaToolkitIncludeDir);</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -186,14 +198,18 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <Lib>
-      <AdditionalDependencies>libopenblas.dll.a</AdditionalDependencies>
+      <AdditionalDependencies>libopenblas.dll.a;cudart_static.lib;cublas.lib;</AdditionalDependencies>
     </Lib>
     <Lib>
-      <AdditionalLibraryDirectories>OpenBLAS/lib;</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>OpenBLAS/lib;$(CudaToolkitLibDir);</AdditionalLibraryDirectories>
     </Lib>
     <PostBuildEvent>
       <Command>copy /Y "$(ProjectDir)OpenBLAS\binary\*" "$(TargetDir)"</Command>
     </PostBuildEvent>
+    <CudaCompile>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
+      <CodeGeneration>compute_30,sm_30;compute_35,sm_35;compute_37,sm_37;compute_50,sm_50;compute_52,sm_52;compute_60,sm_60;compute_61,sm_61;compute_70,sm_70;compute_75,sm_75;</CodeGeneration>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -205,7 +221,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../../EDXUtil/EDXUtil;../../../EDXUtil/EDXUtil</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../EDXUtil/EDXUtil;../../../EDXUtil/EDXUtil;$(CudaToolkitIncludeDir);</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -214,16 +230,21 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <Lib>
-      <AdditionalDependencies>libopenblas.dll.a</AdditionalDependencies>
+      <AdditionalDependencies>libopenblas.dll.a;cudart_static.lib;cublas.lib;</AdditionalDependencies>
     </Lib>
     <Lib>
-      <AdditionalLibraryDirectories>OpenBLAS/lib;</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>OpenBLAS/lib;$(CudaToolkitLibDir);</AdditionalLibraryDirectories>
     </Lib>
     <PostBuildEvent>
       <Command>copy /Y "$(ProjectDir)OpenBLAS\binary\*" "$(TargetDir)"</Command>
     </PostBuildEvent>
+    <CudaCompile>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
+      <CodeGeneration>compute_30,sm_30;compute_35,sm_35;compute_37,sm_37;compute_50,sm_50;compute_52,sm_52;compute_60,sm_60;compute_61,sm_61;compute_70,sm_70;compute_75,sm_75;</CodeGeneration>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 10.0.targets" />
   </ImportGroup>
 </Project>

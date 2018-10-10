@@ -32,13 +32,13 @@ namespace EDX
 			net.fc3Weights = NeuralNet::Create<Constant>();
 			net.fc3Biases = NeuralNet::Create<Constant>();
 
-			net.conv1 = NeuralNet::Create<Convolution>(net.input, net.conv1Weights, net.conv1Biases, Array<int>({ 5, 5 }), 6, Array<int>({ 1, 1 }), Array<int>({ 2, 2 }));
+			net.conv1 = NeuralNet::Create<Convolution>(net.input, net.conv1Weights, net.conv1Biases, TensorArray({ 5, 5 }), 6, TensorArray({ 1, 1 }), TensorArray({ 2, 2 }));
 			net.relu1 = NeuralNet::Create<Relu>(net.conv1);
-			net.pool1 = NeuralNet::Create<MaxPooling>(net.relu1, Array<int>({ 2, 2 }), Array<int>({ 2, 2 }), Array<int>({ 0, 0 }));
+			net.pool1 = NeuralNet::Create<MaxPooling>(net.relu1, TensorArray({ 2, 2 }), TensorArray({ 2, 2 }), TensorArray({ 0, 0 }));
 
-			net.conv2 = NeuralNet::Create<Convolution>(net.pool1, net.conv2Weights, net.conv2Biases, Array<int>({ 5, 5 }), 16, Array<int>({ 1, 1 }), Array<int>({ 2, 2 }));
+			net.conv2 = NeuralNet::Create<Convolution>(net.pool1, net.conv2Weights, net.conv2Biases, TensorArray({ 5, 5 }), 16, TensorArray({ 1, 1 }), TensorArray({ 2, 2 }));
 			net.relu2 = NeuralNet::Create<Relu>(net.conv2);
-			net.pool2 = NeuralNet::Create<MaxPooling>(net.relu2, Array<int>({ 2, 2 }), Array<int>({ 2, 2 }), Array<int>({ 0, 0 }));
+			net.pool2 = NeuralNet::Create<MaxPooling>(net.relu2, TensorArray({ 2, 2 }), TensorArray({ 2, 2 }), TensorArray({ 0, 0 }));
 
 			net.fullyConnected1 = NeuralNet::Create<FullyConnected>(net.pool2, net.fc1Weights, net.fc1Biases, 120);
 			net.relu3 = NeuralNet::Create<Relu>(net.fullyConnected1);
@@ -74,13 +74,13 @@ namespace EDX
 			net.fc3Weights = NeuralNet::Create<Variable>();
 			net.fc3Biases = NeuralNet::Create<Variable>();
 
-			net.conv1 = NeuralNet::Create<Convolution>(net.input, net.conv1Weights, net.conv1Biases, Array<int>({ 5, 5 }), 6, Array<int>({ 1, 1 }), Array<int>({ 2, 2 }));
+			net.conv1 = NeuralNet::Create<Convolution>(net.input, net.conv1Weights, net.conv1Biases, TensorArray({ 5, 5 }), 6, TensorArray({ 1, 1 }), TensorArray({ 2, 2 }));
 			net.relu1 = NeuralNet::Create<Relu>(net.conv1);
-			net.pool1 = NeuralNet::Create<MaxPooling>(net.relu1, Array<int>({ 2, 2 }), Array<int>({ 2, 2 }), Array<int>({ 0, 0 }));
+			net.pool1 = NeuralNet::Create<MaxPooling>(net.relu1, TensorArray({ 2, 2 }), TensorArray({ 2, 2 }), TensorArray({ 0, 0 }));
 
-			net.conv2 = NeuralNet::Create<Convolution>(net.pool1, net.conv2Weights, net.conv2Biases, Array<int>({ 5, 5 }), 16, Array<int>({ 1, 1 }), Array<int>({ 2, 2 }));
+			net.conv2 = NeuralNet::Create<Convolution>(net.pool1, net.conv2Weights, net.conv2Biases, TensorArray({ 5, 5 }), 16, TensorArray({ 1, 1 }), TensorArray({ 2, 2 }));
 			net.relu2 = NeuralNet::Create<Relu>(net.conv2);
-			net.pool2 = NeuralNet::Create<MaxPooling>(net.relu2, Array<int>({ 2, 2 }), Array<int>({ 2, 2 }), Array<int>({ 0, 0 }));
+			net.pool2 = NeuralNet::Create<MaxPooling>(net.relu2, TensorArray({ 2, 2 }), TensorArray({ 2, 2 }), TensorArray({ 0, 0 }));
 
 			net.fullyConnected1 = NeuralNet::Create<FullyConnected>(net.pool2, net.fc1Weights, net.fc1Biases, 120);
 			net.relu3 = NeuralNet::Create<Relu>(net.fullyConnected1);

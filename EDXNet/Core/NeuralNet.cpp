@@ -9,6 +9,10 @@ namespace EDX
 	{
 		Array<UniquePtr<Symbol>> NeuralNet::mSymbols;
 
+		cublasHandle_t Tensor<float>::mCublasHandle;
+		cublasHandle_t Tensor<double>::mCublasHandle;
+		cublasHandle_t Tensor<int>::mCublasHandle;
+
 		void NeuralNet::AddGradientSymbols()
 		{
 			mSymbolToGradientMap.Clear();

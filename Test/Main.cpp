@@ -21,7 +21,7 @@ void TestFullyConnected()
 {
 	int numInputs = 2;
 	int numHidden = 3;
-	Array<int> inputShape = { 4, 5, 6 };
+	TensorArray inputShape = { 4, 5, 6 };
 
 	int inputSize = numInputs * Algorithm::Accumulate(inputShape, 1, Algorithm::Multiply<>());
 	int weightSize = numHidden * Algorithm::Accumulate(inputShape, 1, Algorithm::Multiply<>());
@@ -85,8 +85,8 @@ void TestFullyConnected()
 
 bool TestConvolution()
 {
-	Array<int> x_shape = { 2, 3, 4, 4 };
-	Array<int> w_shape = { 3, 3, 4, 4 };
+	TensorArray x_shape = { 2, 3, 4, 4 };
+	TensorArray w_shape = { 3, 3, 4, 4 };
 
 	int xSize = Algorithm::Accumulate(x_shape, 1, Algorithm::Multiply<>());
 	int wSize = Algorithm::Accumulate(w_shape, 1, Algorithm::Multiply<>());
@@ -99,7 +99,7 @@ bool TestConvolution()
 	Symbol* weights = NeuralNet::Create<Variable>(w);
 	Symbol* biases = NeuralNet::Create<Variable>(b);
 
-	Symbol* convolution = NeuralNet::Create<Convolution>(data, weights, biases, Array<int>({ 4, 4 }), 3, Array<int>({ 2, 2 }), Array<int>({ 1, 1 }));
+	Symbol* convolution = NeuralNet::Create<Convolution>(data, weights, biases, TensorArray({ 4, 4 }), 3, TensorArray({ 2, 2 }), TensorArray({ 1, 1 }));
 
 	NeuralNet net(convolution, true);
 
@@ -197,11 +197,11 @@ bool TestRelu()
 
 void TestPooling()
 {
-	StaticArray<int, 4> xShape = { 2,3,4,4 };
+	TensorArray xShape = { 2,3,4,4 };
 	Tensorf input = Tensorf::LinSpace(-0.3f, 0.4f, Algorithm::Accumulate(xShape, 1, Algorithm::Multiply<>())).Reshape(xShape);
 
 	Symbol* x = NeuralNet::Create<Variable>(input);
-	Symbol* pooling = NeuralNet::Create<MaxPooling>(x, Array<int>({ 2,2 }), Array<int>({ 2,2 }), Array<int>({ 0,0 }));
+	Symbol* pooling = NeuralNet::Create<MaxPooling>(x, TensorArray({ 2,2 }), TensorArray({ 2,2 }), TensorArray({ 0,0 }));
 
 	NeuralNet net(pooling, true);
 
@@ -538,49 +538,66 @@ void TestTotalVariationLoss()
 	NeuralNet::Release();
 }
 
-void TestMattingLaplacian()
-{
-	Tensorf A = Tensorf({
-		{ { 0.79321955f,  0.26368653f,  0.06885819f },
-		{ 0.24796998f,  0.7146999f,  0.35786379f },
-		{ 0.34516456f,  0.27023826f,  0.18541087f },
-		{ 0.74764321f,  0.65248568f,  0.83015837f } },
-
-		{ { 0.30999182f,  0.05887338f,  0.26157566f },
-		{ 0.96582913f, 0.62514031f, 0.15679928f },
-		{ 0.11762355f, 0.63102276f, 0.92336963f },
-		{ 0.57942699f, 0.75011694f, 0.12483227f } },
-
-		{ { 0.43055699f,  0.60420677f,  0.0049846f },
-		{ 0.37634474f, 0.87662164f, 0.46829144f },
-		{ 0.53187853f, 0.66366641f, 0.04956319f },
-		{ 0.68627279f, 0.89384646f, 0.78752079f } },
-
-		{ { 0.16140868f,  0.46934196f,  0.76709362f },
-		{ 0.03980935f, 0.48688648f, 0.30714676f },
-		{ 0.68860603f, 0.4019053f, 0.91339134f },
-		{ 0.26836705f, 0.55345901f, 0.13667431f } }
-	});
-
-	A = Tensorf::Transpose(A, { 2, 0, 1 });
-	SparseMatrixf laplacian = MattingLaplacian::CalcLaplacianMatrix(A);
-}
+//void TestMattingLaplacian()
+//{
+//	Tensorf A = Tensorf({
+//		{ { 0.79321955f,  0.26368653f,  0.06885819f },
+//		{ 0.24796998f,  0.7146999f,  0.35786379f },
+//		{ 0.34516456f,  0.27023826f,  0.18541087f },
+//		{ 0.74764321f,  0.65248568f,  0.83015837f } },
+//
+//		{ { 0.30999182f,  0.05887338f,  0.26157566f },
+//		{ 0.96582913f, 0.62514031f, 0.15679928f },
+//		{ 0.11762355f, 0.63102276f, 0.92336963f },
+//		{ 0.57942699f, 0.75011694f, 0.12483227f } },
+//
+//		{ { 0.43055699f,  0.60420677f,  0.0049846f },
+//		{ 0.37634474f, 0.87662164f, 0.46829144f },
+//		{ 0.53187853f, 0.66366641f, 0.04956319f },
+//		{ 0.68627279f, 0.89384646f, 0.78752079f } },
+//
+//		{ { 0.16140868f,  0.46934196f,  0.76709362f },
+//		{ 0.03980935f, 0.48688648f, 0.30714676f },
+//		{ 0.68860603f, 0.4019053f, 0.91339134f },
+//		{ 0.26836705f, 0.55345901f, 0.13667431f } }
+//	});
+//
+//	A = Tensorf::Transpose(A, { 2, 0, 1 });
+//	SparseMatrixf laplacian = MattingLaplacian::CalcLaplacianMatrix(A);
+//}
 
 void main()
 {
-	TestFullyConnected();
-	TestRelu();
-	TestPooling();
-	TestConvolution();
-	TestSoftmax();
-	TestBatchNormalization();
-	//TestDropoutForward();
-	TestAdam();
-	TestStyleLoss();
-	TestContentLoss();
-	TestTotalVariationLoss();
+	//TestFullyConnected();
+	//TestRelu();
+	//TestPooling();
+	//TestConvolution();
+	//TestSoftmax();
+	//TestBatchNormalization();
+	////TestDropoutForward();
+	//TestAdam();
+	//TestStyleLoss();
+	//TestContentLoss();
+	//TestTotalVariationLoss();
 
 	//TestMattingLaplacian();
+
+	//cublasStatus_t status;
+	//status = cublasCreate(&Tensorf::mCublasHandle);
+
+	Tensorf A = { { 1,2,3,4,5,8,3,1,4 } };
+	Tensorf B = {
+		{ 1 },
+		{ 2 },
+		{ 3 },
+		{ 4 },
+		{ 5 }
+	};
+	Tensorf C = A + B;
+
+	//float pHostC[45] = { 0 };
+	//cudaMemcpy((void*)pHostC, (void*)C.Data(), C.LinearSize() * sizeof(float), cudaMemcpyDeviceToHost);
+
 
 	Assertf(!_CrtDumpMemoryLeaks(), "Memory leak detected. See debug output for details");
 }

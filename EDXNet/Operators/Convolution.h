@@ -120,10 +120,10 @@ namespace EDX
 			Convolution(Symbol* pInput,
 				Symbol* pKernels,
 				Symbol* pBias,
-				const Array<int>& kernelSize,
+				const TensorArray& kernelSize,
 				const int numFilter,
-				const Array<int>& stride,
-				const Array<int>& padding)
+				const TensorArray& stride,
+				const TensorArray& padding)
 				: mKernelSize(kernelSize)
 				, mNumFilter(numFilter)
 				, mStride(stride)
@@ -197,7 +197,7 @@ namespace EDX
 			Symbol* Gradient(Symbol* pUpperGrads) const override;
 
 		private:
-			Array<int> InferShape() const
+			TensorArray InferShape() const
 			{
 				const Tensorf& inputValue = mInputs[0]->GetOutput();
 				const auto inputShape = inputValue.Shape();
@@ -212,10 +212,10 @@ namespace EDX
 
 
 		private:
-			Array<int> mKernelSize;
+			TensorArray mKernelSize;
 			int mNumFilter;
-			Array<int> mStride;
-			Array<int> mPadding;
+			TensorArray mStride;
+			TensorArray mPadding;
 		};
 
 		class ConvolutionGradient : public SymbolBase<5, 3>
@@ -226,10 +226,10 @@ namespace EDX
 				Symbol* pBiases,
 				Symbol* pConvOut,
 				Symbol* pUpperGradients,
-				const Array<int>& kernelSize,
+				const TensorArray& kernelSize,
 				const int numFilter,
-				const Array<int>& stride,
-				const Array<int>& padding)
+				const TensorArray& stride,
+				const TensorArray& padding)
 				: mKernelSize(kernelSize)
 				, mNumFilter(numFilter)
 				, mStride(stride)
@@ -303,7 +303,7 @@ namespace EDX
 			}
 
 		private:
-			Array<int> InferShape() const
+			TensorArray InferShape() const
 			{
 				const Tensorf& weights = mInputs[1]->GetOutput();
 				return weights.Shape();
@@ -311,10 +311,10 @@ namespace EDX
 
 
 		private:
-			Array<int> mKernelSize;
+			TensorArray mKernelSize;
 			int mNumFilter;
-			Array<int> mStride;
-			Array<int> mPadding;
+			TensorArray mStride;
+			TensorArray mPadding;
 		};
 	}
 }

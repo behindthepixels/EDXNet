@@ -300,7 +300,7 @@ namespace EDX
 
 				for (int n = 0; n < numPixels; n++)
 				{
-					StaticArray<int, 4> index = image.StaticIndex(n);
+					TensorArray index = image.Index(n);
 					if (index[1] < r || index[1] >= imgHeight - r ||
 						index[2] < r || index[2] >= imgWidth - r)
 					{

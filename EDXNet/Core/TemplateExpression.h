@@ -15,7 +15,7 @@ struct TExp
 template<typename T>
 struct TScalarExp : public TExp<TScalarExp<T>>
 {
-	const T& val;
+	const T val;
 
 	TScalarExp(const T& _val)
 		: val(_val)
@@ -28,7 +28,7 @@ struct TScalarExp : public TExp<TScalarExp<T>>
 		return val;
 	}
 
-	__forceinline Array<int> Shape() const
+	__forceinline TensorArray Shape() const
 	{
 		return{ 1 };
 	}
@@ -44,12 +44,12 @@ TScalarExp<T> Scalar(const T& val)
 template<typename TOp, typename TLhs, typename TRhs>
 struct TBinaryExp : public TExp<TBinaryExp<TOp, TLhs, TRhs>>
 {
-	const TLhs& lhs;
-	const TRhs& rhs;
+	const TLhs lhs;
+	const TRhs rhs;
 
 	TBinaryExp(const TLhs& _lhs, const TRhs& _rhs)
-		: lhs(_lhs)
-		, rhs(_rhs)
+		: lhs(_lhs.Self())
+		, rhs(_rhs.Self())
 	{
 	}
 
@@ -59,7 +59,7 @@ struct TBinaryExp : public TExp<TBinaryExp<TOp, TLhs, TRhs>>
 		return TOp::Exec(lhs.Eval(i, broadcastIndex), rhs.Eval(i, broadcastIndex));
 	}
 
-	__forceinline Array<int> Shape() const
+	__forceinline TensorArray Shape() const
 	{
 		return BroadcastShape(lhs.Shape(), rhs.Shape());
 	}
@@ -131,7 +131,7 @@ inline TBinaryExp<DivOp, TLhs, TRhs> operator / (const TExp<TLhs>& lhs, const TE
 template<typename TOp, typename TParam>
 struct TUnaryExp : public TExp<TUnaryExp<TOp, TParam>>
 {
-	const TParam& param;
+	const TParam param;
 
 	TUnaryExp(const TParam& _param)
 		: param(_param)
@@ -144,7 +144,7 @@ struct TUnaryExp : public TExp<TUnaryExp<TOp, TParam>>
 		return TOp::Exec(param.Eval(i, broadcastIndex));
 	}
 
-	__forceinline Array<int> Shape() const
+	__forceinline TensorArray Shape() const
 	{
 		return param.Shape();
 	}
@@ -245,9 +245,9 @@ inline TUnaryExp<ReluOp, TParam> ReluActivateExp(const TExp<TParam>& param)
 struct TConstantExp : public TExp<TConstantExp>
 {
 	float val;
-	Array<int> shape;
+	TensorArray shape;
 
-	TConstantExp(const float _val, const Array<int>& _shape)
+	TConstantExp(const float _val, const TensorArray& _shape)
 		: val(_val)
 		, shape(_shape)
 	{
@@ -265,7 +265,7 @@ struct TConstantExp : public TExp<TConstantExp>
 		return val;
 	}
 
-	__forceinline Array<int> Shape() const
+	__forceinline TensorArray Shape() const
 	{
 		return shape;
 	}

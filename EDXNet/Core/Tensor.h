@@ -10,6 +10,9 @@
 #define lapack_complex_double std::complex<double>
 #include "../OpenBLAS/include/lapacke.h"
 
+#include <cuda_runtime.h>
+#include <cublas_v2.h>
+
 #include <ppl.h>
 using namespace concurrency;
 
@@ -29,11 +32,188 @@ namespace EDX
 			enum { Value = IsIntegralType<Last>::Value };
 		};
 
+		struct TensorArray
+		{
+			typedef int ElementType;
+
+			static const int MaxArraySize = 5;
+			int x[MaxArraySize];
+			int mSize = 0;
+
+			TensorArray()
+			{
+				mSize = x[0] = x[1] = x[2] = x[3] = x[4] = 0;
+			}
+
+			TensorArray(const Array<int>& shape)
+			{
+				this->operator=(shape);
+			}
+
+			TensorArray(std::initializer_list<int> InitList)
+			{
+				this->operator=(InitList);
+			}
+
+			void operator = (const Array<int>& shape)
+			{
+				mSize = shape.Size();
+
+				for (int i = 0; i < mSize; i++)
+					x[i] = shape[i];
+			}
+
+			void operator = (std::initializer_list<int> InitList)
+			{
+				mSize = InitList.size();
+				Assign(InitList.begin(), mSize);
+			}
+
+			bool operator == (const TensorArray& rhs) const
+			{
+				if (mSize != rhs.Size())
+				{
+					return false;
+				}
+
+				for (int i = 0; i < mSize; i++)
+				{
+					if (x[i] != rhs[i])
+						return false;
+				}
+
+				return true;
+			}
+
+			bool operator != (const TensorArray& rhs) const
+			{
+				return !(*this == rhs);
+			}
+
+
+			const int operator [] (const int idx) const
+			{
+				Assert(idx < MaxArraySize);
+				return x[idx];
+			}
+
+			int& operator [] (const int idx)
+			{
+				Assert(idx < MaxArraySize);
+				return x[idx];
+			}
+
+
+			const int Size() const
+			{
+				return mSize;
+			}
+
+			bool Empty() const
+			{
+				return mSize == 0;
+			}
+
+			void Clear(int32 Slack = 0)
+			{
+				ResizeZeroed(Slack);
+			}
+
+			void Resize(const int size)
+			{
+				Assert(size <= MaxArraySize);
+				mSize = size;
+			}
+
+			void ResizeZeroed(const int size)
+			{
+				Assert(size <= MaxArraySize);
+
+				mSize = size;
+				Memory::Memzero(x);
+			}
+
+			int* Data()
+			{
+				return x;
+			}
+
+			const int* Data() const
+			{
+				return x;
+			}
+
+			void Assign(const int* Vals, const int32 Count)
+			{
+				Resize(Count);
+
+				Memory::Memcpy(x, Vals, Count * sizeof(int));
+			}
+
+			bool Contains(const int val) const
+			{
+				for (int i = 0; i < mSize; i++)
+				{
+					if (x[i] == val)
+						return true;
+				}
+
+				return false;
+			}
+
+			bool Add(const int val)
+			{
+				Assert(mSize < 5);
+				x[mSize++] = val;
+
+				return false;
+			}
+
+			friend Stream& operator << (Stream& stream, TensorArray& A)
+			{
+				// Save array.
+				stream << A.mSize;
+				for (int32 i = 0; i < A.mSize; i++)
+				{
+					stream << A[i];
+				}
+
+				return stream;
+			}
+
+			friend Stream& operator >> (Stream& stream, TensorArray& A)
+			{
+				// Load array.
+				int32 NewNum;
+				stream >> NewNum;
+				A.Clear(NewNum);
+				for (int32 i = 0; i < NewNum; i++)
+				{
+					stream >> A[i];
+				}
+
+				return stream;
+			}
+
+		private:
+
+			// --------------------------------------------------------------------------------------------
+			// DO NOT USE DIRECTLY
+			// STL-like iterators to enable range-based for loop support.
+			// --------------------------------------------------------------------------------------------
+			__forceinline friend int*			begin(TensorArray& shape) { return shape.Data(); }
+			__forceinline friend const int*		begin(const TensorArray& shape) { return shape.Data(); }
+			__forceinline friend int*			end(TensorArray& shape) { return shape.Data() + shape.Size(); }
+			__forceinline friend const int*		end(const TensorArray& shape) { return shape.Data() + shape.Size(); }
+		};
+
+		//using TensorArray = StaticArray<int, 5>;
+
 		class TensorIndex
 		{
 		protected:
-			Array<int> mShape;
-			Array<int> mStrides;
+			TensorArray mShape;
+			TensorArray mStrides;
 			int mLinearSize;
 			bool mTransposed = false;
 
@@ -52,14 +232,7 @@ namespace EDX
 				Resize_Common();
 			}
 
-			void Resize(const Array<int>& shape)
-			{
-				mShape = shape;
-				Resize_Common();
-			}
-
-			template<int N>
-			void Resize(const StaticArray<int, N>& shape)
+			void Resize(const TensorArray& shape)
 			{
 				mShape = shape;
 				Resize_Common();
@@ -78,18 +251,7 @@ namespace EDX
 				Assert(mLinearSize == oldSize);
 			}
 
-			void Reshape(const Array<int>& shape)
-			{
-				auto oldSize = mLinearSize;
-
-				mShape = shape;
-				Resize_Common();
-
-				Assert(mLinearSize == oldSize);
-			}
-
-			template<int N>
-			void Reshape(const StaticArray<int, N>& shape)
+			void Reshape(const TensorArray& shape)
 			{
 				auto oldSize = mLinearSize;
 
@@ -99,7 +261,7 @@ namespace EDX
 				Assert(mLinearSize == oldSize);
 			}
 			
-			void Transpose(const Array<int>& transposeDim = {})
+			void Transpose(const TensorArray& transposeDim = {})
 			{
 				if (transposeDim.Empty())
 				{
@@ -108,8 +270,8 @@ namespace EDX
 				}
 				else
 				{
-					Array<int> shapeCopy = mShape;
-					Array<int> strideCopy = mStrides;
+					TensorArray shapeCopy = mShape;
+					TensorArray strideCopy = mStrides;
 					for (int i = 0; i < transposeDim.Size(); i++)
 					{
 						mShape[i] = shapeCopy[transposeDim[i]];
@@ -130,7 +292,7 @@ namespace EDX
 				return LinearIndex<size>(_idx);
 			}
 
-			__forceinline int LinearIndex(const Array<int>& idx) const
+			__forceinline int LinearIndex(const TensorArray& idx) const
 			{
 				const int size = idx.Size();
 				Assertf(size == mShape.Size(), "Input index dimension does not match with array dimension.");
@@ -160,41 +322,11 @@ namespace EDX
 				return ret;
 			}
 
-			template<int N>
-			__forceinline int LinearIndex(const StaticArray<int, N>& idx) const
-			{
-				const int size = idx.Size();
-				Assertf(size == mShape.Size(), "Input index dimension does not match with array dimension.");
-
-				int ret = 0;
-				for (auto i = 0; i < size; i++)
-				{
-					ret += idx[i] * mStrides[i];
-				}
-
-				Assert(ret < mLinearSize);
-				return ret;
-			}
-
-			__forceinline Array<int> Index(int linearIdx) const
+			__forceinline TensorArray Index(int linearIdx) const
 			{
 				Assert(linearIdx < mLinearSize);
 
-				Array<int> vRet;
-				vRet.Resize(mShape.Size());
-				for (int i = 0; i < mShape.Size(); i++)
-				{
-					vRet[i] = linearIdx / mStrides[i];
-					linearIdx %= mStrides[i];
-				}
-				return vRet;
-			}
-
-			__forceinline StaticArray<int, 4> StaticIndex(int linearIdx) const
-			{
-				Assert(linearIdx < mLinearSize);
-
-				StaticArray<int, 4> vRet;
+				TensorArray vRet;
 				vRet.Resize(mShape.Size());
 				for (int i = 0; i < mShape.Size(); i++)
 				{
@@ -209,7 +341,7 @@ namespace EDX
 				return mLinearSize;
 			}
 			
-			__forceinline bool IndexRangeCheck(const Array<int>& index) const
+			__forceinline bool IndexRangeCheck(const TensorArray& index) const
 			{
 				for (int i = 0; i < mShape.Size(); i++)
 				{
@@ -219,30 +351,7 @@ namespace EDX
 				return true;
 			}
 
-			__forceinline void IterateIndex(Array<int>& index) const
-			{
-				for (int i = mShape.Size() - 1; i >= 0; i--)
-				{
-					index[i]++;
-
-					if (index[i] < mShape[i])
-						break;
-					else
-						index[i] = 0;
-				}
-			}
-
-			__forceinline bool IndexRangeCheck(const StaticArray<int, 4>& index) const
-			{
-				for (int i = 0; i < mShape.Size(); i++)
-				{
-					if (index[i] >= mShape[i])
-						return false;
-				}
-				return true;
-			}
-
-			__forceinline void IterateIndex(StaticArray<int, 4>& index) const
+			__forceinline void IterateIndex(TensorArray& index) const
 			{
 				for (int i = mShape.Size() - 1; i >= 0; i--)
 				{
@@ -261,12 +370,12 @@ namespace EDX
 				return mShape[iDim];
 			}
 
-			__forceinline const Array<int>& Shape() const
+			__forceinline const TensorArray& Shape() const
 			{
 				return mShape;
 			}
 
-			__forceinline Array<int> Shape()
+			__forceinline TensorArray Shape()
 			{
 				return mShape;
 			}
@@ -335,7 +444,7 @@ namespace EDX
 			}
 		};
 
-		static Array<int> BroadcastShape(const Array<int>& leftShape, const Array<int>& rightShape)
+		static TensorArray BroadcastShape(const TensorArray& leftShape, const TensorArray& rightShape)
 		{
 			if (leftShape == rightShape) // Trivially broadcasted
 			{
@@ -347,7 +456,7 @@ namespace EDX
 			const auto& greaterShape = leftDim > rightDim ? leftShape : rightShape;
 			const int retDim = greaterShape.Size();
 
-			Array<int> ret;
+			TensorArray ret;
 			ret.Resize(retDim);
 
 			int k = retDim - 1;
@@ -380,6 +489,9 @@ namespace EDX
 			T* mpData;
 			TensorIndex mIndex;
 			bool mReleaseData = true;
+
+		public:
+			static cublasHandle_t mCublasHandle;
 
 		public:
 			Tensor()
@@ -441,6 +553,11 @@ namespace EDX
 				return *this;
 			}
 
+			const Tensor<T> Self() const
+			{
+				return GetWithShape(Shape());
+			}
+
 			// ----------------------------------------------------------------
 			// Constructor and assignment override for template expression
 			// ----------------------------------------------------------------
@@ -467,10 +584,10 @@ namespace EDX
 
 			__forceinline T Eval(const int idx, const TensorIndex& broadcastIndex) const
 			{
-				StaticArray<int, 4> selfIndex;
+				TensorArray selfIndex;
 				selfIndex.Resize(Dim());
 
-				StaticArray<int, 4> index = broadcastIndex.StaticIndex(idx);
+				TensorArray index = broadcastIndex.Index(idx);
 				for (int j = 0; j < Dim(); j++)
 				{
 					selfIndex[j] = index[j + broadcastIndex.Shape().Size() - Dim()];
@@ -513,47 +630,58 @@ namespace EDX
 
 			Tensor& operator = (NestedInitializerList<T, 1> initList)
 			{
-				Resize(DeriveShapeFromNestedInitList<Array<int>>(initList));
-				InitListNestedCopy(Data(), initList);
+				NestedInitializerListHelper<1>(initList);
+
 				return *this;
 			}
 
 			Tensor& operator = (NestedInitializerList<T, 2> initList)
 			{
-				Resize(DeriveShapeFromNestedInitList<Array<int>>(initList));
-				InitListNestedCopy(Data(), initList);
+				NestedInitializerListHelper<2>(initList);
+
 				return *this;
 			}
 
 			Tensor& operator = (NestedInitializerList<T, 3> initList)
 			{
-				Resize(DeriveShapeFromNestedInitList<Array<int>>(initList));
-				InitListNestedCopy(Data(), initList);
+				NestedInitializerListHelper<3>(initList);
+
 				return *this;
 			}
 
 			Tensor& operator = (NestedInitializerList<T, 4> initList)
 			{
-				Resize(DeriveShapeFromNestedInitList<Array<int>>(initList));
-				InitListNestedCopy(Data(), initList);
+				NestedInitializerListHelper<4>(initList);
+
 				return *this;
 			}
 
 			Tensor& operator = (NestedInitializerList<T, 5> initList)
 			{
-				Resize(DeriveShapeFromNestedInitList<Array<int>>(initList));
-				InitListNestedCopy(Data(), initList);
+				NestedInitializerListHelper<5>(initList);
+
 				return *this;
+			}
+
+			template<int level>
+			void NestedInitializerListHelper(NestedInitializerList<T, level> initList)
+			{
+				Resize(DeriveShapeFromNestedInitList<TensorArray>(initList));
+				InitListNestedCopy(Data(), initList);
+				//T* pTempData = new T[LinearSize()];
+				//T* pIter = pTempData;
+				//InitListNestedCopy(pIter, initList);
+
+				//cudaMemcpy(Data(), pTempData, LinearSize() * sizeof(T), cudaMemcpyHostToDevice);
 			}
 
 			template<typename... TShape>
 			void Resize(TShape... shape)
 			{
-				constexpr int size = sizeof...(shape);
-				Resize<size>({ shape... });
+				Resize({ shape... });
 			}
 
-			void Resize(const Array<int>& shape)
+			void Resize(const TensorArray& shape)
 			{
 				int newLinSize = Algorithm::Accumulate(shape, int(1), Algorithm::Multiply<>());
 				if (LinearSize() != newLinSize)
@@ -562,6 +690,8 @@ namespace EDX
 					mIndex.Resize(shape);
 
 					mpData = Memory::AlignedAlloc<T>(mIndex.LinearSize());
+					//cudaMalloc<T>(&mpData, mIndex.LinearSize() * sizeof(T));
+
 					Assert(mpData);
 
 					Clear();
@@ -572,50 +702,22 @@ namespace EDX
 				}
 			}
 
-			template<int N>
-			void Resize(const StaticArray<int, N>& shape)
-			{
-				int newLinSize = Algorithm::Accumulate(shape, int(1), Algorithm::Multiply<>());
-				if (LinearSize() != newLinSize)
-				{
-					Free();
-					mIndex.Resize<N>(shape);
-
-					mpData = Memory::AlignedAlloc<T>(mIndex.LinearSize());
-					Assert(mpData);
-
-					Clear();
-				}
-				else
-				{
-					const auto& oldShape = Shape();
-					if (oldShape.Size() != N)
-					{
-						Reshape<N>(shape);
-					}
-					else
-					{
-						for (int i = 0; i < N; i++)
-						{
-							if (oldShape[i] != shape[i])
-							{
-								Reshape<N>(shape);
-								break;
-							}
-						}
-					}
-				}
-			}
-
-			void Assign(const T* pData, const Array<int>& shape)
+			void Assign(const T* pData, const TensorArray& shape)
 			{
 				Resize(shape);
 				Memory::Memcpy(mpData, pData, LinearSize() * sizeof(T));
+				//cudaMemcpy(mpData, pData, LinearSize() * sizeof(T));
 			}
 
-			void Assign(const T val, const Array<int>& shape)
+			void Assign(const T val, const TensorArray& shape)
 			{
 				Resize(shape);
+
+				//// wrap raw pointer with a device_ptr 
+				//thrust::device_ptr<T> dpData = thrust::device_pointer_cast(mpData);
+
+				//// use device_ptr in Thrust algorithms
+				//thrust::fill(dpData, dpData + LinearSize(), val);
 
 				for (int i = 0; i < LinearSize(); i++)
 					mpData[i] = val;
@@ -628,20 +730,13 @@ namespace EDX
 				return *this;
 			}
 
-			Tensor Reshape(const Array<int>& shape)
+			Tensor Reshape(const TensorArray& shape)
 			{
 				mIndex.Reshape(shape);
 				return *this;
 			}
 
-			template<int N>
-			Tensor Reshape(const StaticArray<int, N>& shape)
-			{
-				mIndex.Reshape<N>(shape);
-				return *this;
-			}
-
-			Tensor GetTransposed(const Array<int>& transposeDim = {})
+			Tensor GetTransposed(const TensorArray& transposeDim = {})
 			{
 				Tensor ret;
 				ret.mIndex = mIndex;
@@ -657,27 +752,15 @@ namespace EDX
 			Tensor GetWithShape(Shape... shape)
 			{
 				static_assert(AllIntegralType<Shape...>::Value, "All parameters have to be integral type.");
-				constexpr int N = sizeof...(shape);
 
-				return GetWithShape<N>({ shape... });
+				return GetWithShape({ shape... });
 			}
 
-			Tensor GetWithShape(const Array<int>& shape)
+			Tensor GetWithShape(const TensorArray& shape)
 			{
 				Tensor ret;
 				ret.mIndex = mIndex;
 				ret.mIndex.Reshape(shape);
-				ret.mpData = mpData;
-				ret.mReleaseData = false;
-				return ret;
-			}
-
-			template<int N>
-			Tensor GetWithShape(const StaticArray<int, N>& shape)
-			{
-				Tensor ret;
-				ret.mIndex = mIndex;
-				ret.mIndex.Reshape<N>(shape);
 				ret.mpData = mpData;
 				ret.mReleaseData = false;
 				return ret;
@@ -687,12 +770,11 @@ namespace EDX
 			const Tensor GetWithShape(Shape... shape) const
 			{
 				static_assert(AllIntegralType<Shape...>::Value, "All parameters have to be integral type.");
-				constexpr int N = sizeof...(shape);
 
-				return GetWithShape<N>({ shape... });
+				return GetWithShape({ shape... });
 			}
 
-			const Tensor GetWithShape(const Array<int>& shape) const
+			const Tensor GetWithShape(const TensorArray& shape) const
 			{
 				Tensor ret;
 				ret.mIndex = mIndex;
@@ -702,49 +784,19 @@ namespace EDX
 				return ret;
 			}
 
-			template<int N>
-			const Tensor GetWithShape(const StaticArray<int, N>& shape) const
-			{
-				Tensor ret;
-				ret.mIndex = mIndex;
-				ret.mIndex.Reshape<N>(shape);
-				ret.mpData = mpData;
-				ret.mReleaseData = false;
-				return ret;
-			}
-
 			template<typename... Index>
 			Tensor GetSlice(Index... index)
 			{
 				static_assert(AllIntegralType<Index...>::Value, "All parameters have to be integral type.");
-				constexpr int N = sizeof...(index);
 
-				return GetSlice<N>({ index... });
+				return GetSlice({ index... });
 			}
 
-			Tensor GetSlice(const Array<int>& index)
+			Tensor GetSlice(const TensorArray& index)
 			{
 				Tensor ret;
 
-				Array<int> filledIndex = index;
-				int numComponentToFill = Dim() - index.Size();
-				while (numComponentToFill--)
-				{
-					filledIndex.Add(0);
-				}
-
-				ret.mpData = &this->operator()(filledIndex);
-				ret.mIndex = mIndex.GetSliceIndex(index.Size());
-				ret.mReleaseData = false;
-				return ret;
-			}
-
-			template<int N>
-			Tensor GetSlice(const StaticArray<int, N>& index)
-			{
-				Tensor ret;
-
-				Array<int> filledIndex = Array<int>(index);
+				TensorArray filledIndex = index;
 				int numComponentToFill = Dim() - index.Size();
 				while (numComponentToFill--)
 				{
@@ -762,34 +814,15 @@ namespace EDX
 			const Tensor GetSlice(Index... index) const
 			{
 				static_assert(AllIntegralType<Index...>::Value, "All parameters have to be integral type.");
-				constexpr int N = sizeof...(index);
 
-				return GetSlice<N>({ index... });
+				return GetSlice({ index... });
 			}
 
-			const Tensor GetSlice(const Array<int>& index) const
+			const Tensor GetSlice(const TensorArray& index) const
 			{
 				Tensor ret;
 
-				Array<int> filledIndex = index;
-				int numComponentToFill = Dim() - index.Size();
-				while (numComponentToFill--)
-				{
-					filledIndex.Add(0);
-				}
-
-				ret.mpData = &this->operator()(filledIndex);
-				ret.mIndex = mIndex.GetSliceIndex(index.Size());
-				ret.mReleaseData = false;
-				return ret;
-			}
-
-			template<int N>
-			const Tensor GetSlice(const StaticArray<int, N>& index) const
-			{
-				Tensor ret;
-
-				Array<int> filledIndex = Array<int>(index);
+				TensorArray filledIndex = index;
 				int numComponentToFill = Dim() - index.Size();
 				while (numComponentToFill--)
 				{
@@ -836,6 +869,9 @@ namespace EDX
 			__forceinline void Clear()
 			{
 				Memory::SafeClear(mpData, mIndex.LinearSize());
+
+				//if (mpData)
+				//	cudaMemset(mpData, 0, mIndex.LinearSize() * sizeof(T));
 			}
 
 			template<typename... Index>
@@ -843,35 +879,23 @@ namespace EDX
 			{
 				return mIndex.LinearIndex(idx...);
 			}
-			__forceinline int LinearIndex(const Array<int>& idx) const
+			__forceinline int LinearIndex(const TensorArray& idx) const
 			{
 				return mIndex.LinearIndex(idx);
 			}
-			__forceinline virtual Array<int> Index(int linearIdx) const
+			__forceinline virtual TensorArray Index(int linearIdx) const
 			{
 				return mIndex.Index(linearIdx);
-			}
-			__forceinline virtual StaticArray<int, 4> StaticIndex(int linearIdx) const
-			{
-				return mIndex.StaticIndex(linearIdx);
 			}
 			__forceinline int LinearSize() const
 			{
 				return mIndex.LinearSize();
 			}
-			__forceinline bool IndexRangeCheck(const Array<int>& index) const
+			__forceinline bool IndexRangeCheck(const TensorArray& index) const
 			{
 				return mIndex.IndexRangeCheck(index);
 			}
-			__forceinline void IterateIndex(Array<int>& index) const
-			{
-				return mIndex.IterateIndex(index);
-			}
-			__forceinline bool IndexRangeCheck(const StaticArray<int, 4>& index) const
-			{
-				return mIndex.IndexRangeCheck(index);
-			}
-			__forceinline void IterateIndex(StaticArray<int, 4>& index) const
+			__forceinline void IterateIndex(TensorArray& index) const
 			{
 				return mIndex.IterateIndex(index);
 			}
@@ -879,11 +903,11 @@ namespace EDX
 			{
 				return mIndex.Shape(iDim);
 			}
-			__forceinline const Array<int>& Shape() const
+			__forceinline const TensorArray& Shape() const
 			{
 				return mIndex.Shape();
 			}
-			__forceinline Array<int> Shape()
+			__forceinline TensorArray Shape()
 			{
 				return mIndex.Shape();
 			}
@@ -912,11 +936,11 @@ namespace EDX
 				return mpData[LinearIndex(idx...)];
 			}
 
-			__forceinline T& operator [] (const Array<int>& idx)
+			__forceinline T& operator [] (const TensorArray& idx)
 			{
 				return mpData[LinearIndex(idx)];
 			}
-			__forceinline const T& operator [] (const Array<int>& idx) const
+			__forceinline const T& operator [] (const TensorArray& idx) const
 			{
 				return mpData[LinearIndex(idx)];
 			}
@@ -942,7 +966,12 @@ namespace EDX
 			void Free()
 			{
 				if (mReleaseData)
+				{
 					Memory::SafeFree(mpData);
+					//if (mpData)
+					//	cudaFree(mpData);
+					//mpData = nullptr;
+				}
 			}
 
 			// ----------------------------------------------------------------
@@ -951,8 +980,7 @@ namespace EDX
 			friend Stream& operator << (Stream& stream, Tensor& A)
 			{
 				// Save array.
-				Array<int> shape = A.Shape();
-				stream << shape;
+				stream << A.Shape();
 				stream.ByteOrderWrite(A.Data(), A.LinearSize() * sizeof(T));
 
 				return stream;
@@ -961,7 +989,7 @@ namespace EDX
 			friend Stream& operator >> (Stream& stream, Tensor& A)
 			{
 				// Load array.
-				Array<int> newShape;
+				TensorArray newShape;
 				stream >> newShape;
 				A.Resize(newShape);
 				stream.ByteOrderRead(A.Data(), A.LinearSize() * sizeof(T));
@@ -1044,8 +1072,8 @@ namespace EDX
 
 			static Tensor<T> Dot(const Tensor<T>& lhs, const Tensor<T>& rhs)
 			{
-				const Array<int>& leftShape = lhs.Shape();
-				const Array<int>& rightShape = rhs.Shape();
+				const TensorArray& leftShape = lhs.Shape();
+				const TensorArray& rightShape = rhs.Shape();
 
 				Assertf(leftShape.Size() == rightShape.Size(), "Number of dimensions has to match between left and right tensors in dot product.");
 				Assertf(leftShape.Size() <= 2, "Dot product only supports tensors less than 2 dimensions.");
@@ -1062,16 +1090,13 @@ namespace EDX
 
 			static void DotInplace(const Tensor<T>& lhs, const Tensor<T>& rhs, Tensor<T>* pResult)
 			{
-				const Array<int>& leftShape = lhs.Shape();
-				const Array<int>& rightShape = rhs.Shape();
+				const TensorArray& leftShape = lhs.Shape();
+				const TensorArray& rightShape = rhs.Shape();
 
 				Assertf(leftShape.Size() == rightShape.Size(), "Number of dimensions has to match between left and right tensors in dot product.");
 				Assertf(leftShape.Size() <= 2, "Dot product only supports tensors less than 2 dimensions.");
 
 				Assertf(!(leftShape.Size() == 2 && leftShape[1] != rightShape[0]), "Dimension mismatch for tensor multiply.");
-
-
-				static const uint BLOCK_SIZE = 90;
 
 				cblas_sgemm(CblasRowMajor,
 					lhs.IsTransposed() ? CblasTrans : CblasNoTrans,
@@ -1087,11 +1112,29 @@ namespace EDX
 					0.0f,
 					pResult->Data(),
 					pResult->Shape(1));
+
+				//const float alpha = 1.0f;
+				//const float beta = 0.0f;
+
+				//cublasSgemm(mCublasHandle,
+				//	rhs.IsTransposed() ? CUBLAS_OP_T : CUBLAS_OP_N,
+				//	lhs.IsTransposed() ? CUBLAS_OP_T : CUBLAS_OP_N,
+				//	rightShape[1],
+				//	leftShape[0],
+				//	leftShape[1],
+				//	&alpha,
+				//	rhs.Data(),
+				//	rhs.IsTransposed() ? rhs.Shape(0) : rhs.Shape(1),
+				//	lhs.Data(),
+				//	lhs.IsTransposed() ? lhs.Shape(0) : lhs.Shape(1),
+				//	&beta,
+				//	pResult->Data(),
+				//	pResult->Shape(1));
 			}
 			
 			static Tensor<T> Dot(const SparseMatrix<T>& lhs, const Tensor<T>& rhs)
 			{
-				const Array<int>& rightShape = rhs.Shape();
+				const TensorArray& rightShape = rhs.Shape();
 
 				Assertf(rightShape.Size() <= 2, "Dot product only supports tensors less than 2 dimensions.");
 				Assertf(!(rightShape.Size() == 2 && lhs.n != rightShape[0]), "Dimension mismatch for tensor multiply.");
@@ -1106,7 +1149,7 @@ namespace EDX
 
 			static void DotInplace(const SparseMatrix<T>& lhs, const Tensor<T>& rhs, Tensor<T>* pResult)
 			{
-				const Array<int>& rightShape = rhs.Shape();
+				const TensorArray& rightShape = rhs.Shape();
 
 				Assertf(rightShape.Size() <= 2, "Dot product only supports tensors less than 2 dimensions.");
 				Assertf(!(rightShape.Size() == 2 && lhs.n != rightShape[0]), "Dimension mismatch for tensor multiply.");
@@ -1121,11 +1164,11 @@ namespace EDX
 				});
 			}
 
-			static Tensor<T> Transpose(const Tensor<T>& inTensor, const Array<int>& transposeDim = {})
+			static Tensor<T> Transpose(const Tensor<T>& inTensor, const TensorArray& transposeDim = {})
 			{
-				const Array<int>& inShape = inTensor.Shape();
+				const TensorArray& inShape = inTensor.Shape();
 
-				Array<int> transposedShape = inShape;
+				TensorArray transposedShape = inShape;
 				if (transposeDim.Empty())
 				{
 					Algorithm::Reverse(transposedShape);
@@ -1141,11 +1184,11 @@ namespace EDX
 				Tensor<T> ret;
 				ret.Resize(transposedShape);
 
-				StaticArray<int, 4> index;
+				TensorArray index;
 				index.ResizeZeroed(inTensor.Dim());
 				for (int i = 0; i < inTensor.LinearSize(); i++, inTensor.IterateIndex(index))
 				{
-					StaticArray<int, 4> transposedIndex = index;
+					TensorArray transposedIndex = index;
 
 					if (transposeDim.Empty())
 					{
@@ -1236,17 +1279,17 @@ namespace EDX
 				return ReluActivateExp(param);
 			}
 
-			static Tensor<T> Sum(const Tensor<T>& inTensor, const Array<int>& axises = { -1 }, const bool keepDim = false)
+			static Tensor<T> Sum(const Tensor<T>& inTensor, const TensorArray& axises = { -1 }, const bool keepDim = false)
 			{
 				return ProjectionOp(inTensor, axises, keepDim, Algorithm::Plus<>(), T(0));
 			}
 
-			static Tensor<T> Product(const Tensor<T>& inTensor, const Array<int>& axises = { -1 })
+			static Tensor<T> Product(const Tensor<T>& inTensor, const TensorArray& axises = { -1 })
 			{
 				return ProjectionOp(inTensor, axises, keepDim, Algorithm::Multiply<>(), T(1));
 			}
 
-			static Tensor<T> Max(const Tensor<T>& inTensor, const Array<int>& axises = { -1 }, const bool keepDim = false)
+			static Tensor<T> Max(const Tensor<T>& inTensor, const TensorArray& axises = { -1 }, const bool keepDim = false)
 			{
 				struct MaxOp
 				{
@@ -1260,7 +1303,7 @@ namespace EDX
 				return ProjectionOp(inTensor, axises, keepDim, MaxOp(), T(Math::EDX_NEG_INFINITY));
 			}
 
-			static Tensor<T> Mean(const Tensor<T>& X, const Array<int>& axises = { -1 }, const bool keepDim = false)
+			static Tensor<T> Mean(const Tensor<T>& X, const TensorArray& axises = { -1 }, const bool keepDim = false)
 			{
 				Tensor<T> ret = Sum(X, axises);
 
@@ -1270,7 +1313,7 @@ namespace EDX
 				return ret;
 			}
 
-			static Tensor<T> StandardDeviation(const Tensor<T>& X, const Array<int>& axises = { -1 }, const bool keepDim = false)
+			static Tensor<T> StandardDeviation(const Tensor<T>& X, const TensorArray& axises = { -1 }, const bool keepDim = false)
 			{
 				Tensor<T> mean = Mean(X, axises, keepDim);
 				Tensor<T> centeredX = X - mean;
@@ -1357,13 +1400,13 @@ namespace EDX
 				//for (int i = 0; i < ret.LinearSize(); i++, ret.IterateIndex(index))
 				parallel_for(0u, (uint)ret.LinearSize(), [&](int i)
 				{
-					StaticArray<int, 4> leftIndex;
+					TensorArray leftIndex;
 					leftIndex.Resize(lhs.Dim());
 
-					StaticArray<int, 4> rightIndex;
+					TensorArray rightIndex;
 					rightIndex.Resize(rhs.Dim());
 
-					StaticArray<int, 4> index = ret.StaticIndex(i);
+					TensorArray index = ret.Index(i);
 					for (int j = 0; j < lhs.Dim(); j++)
 					{
 						leftIndex[j] = index[j + ret.Dim() - lhs.Dim()];
@@ -1399,13 +1442,13 @@ namespace EDX
 				//for (int i = 0; i < lhs.LinearSize(); i++, lhs.IterateIndex(index))
 				parallel_for(0u, (uint)lhs.LinearSize(), [&](int i)
 				{
-					StaticArray<int, 4> leftIndex;
+					TensorArray leftIndex;
 					leftIndex.Resize(lhs.Dim());
 
-					StaticArray<int, 4> rightIndex;
+					TensorArray rightIndex;
 					rightIndex.Resize(rhs.Dim());
 
-					StaticArray<int, 4> index = lhs.StaticIndex(i);
+					TensorArray index = lhs.Index(i);
 					for (int j = 0; j < lhs.Dim(); j++)
 					{
 						leftIndex[j] = index[j + lhs.Dim() - lhs.Dim()];
@@ -1439,15 +1482,15 @@ namespace EDX
 			}
 
 			template<typename Op>
-			static Tensor<T> ProjectionOp(const Tensor<T>& lhs, const Array<int>& axises, const bool keepDim, Op op, T initVal)
+			static Tensor<T> ProjectionOp(const Tensor<T>& lhs, const TensorArray& axises, const bool keepDim, Op op, T initVal)
 			{
 				if (axises.Size() == 1 && axises[0] == -1)
 				{
 					return Algorithm::Accumulate(lhs, initVal, op);
 				}
 
-				const Array<int>& inShape = lhs.Shape();
-				StaticArray<int, 4> projShape;
+				const TensorArray& inShape = lhs.Shape();
+				TensorArray projShape;
 				for (int i = 0; i < inShape.Size(); i++)
 				{
 					if (!keepDim)
@@ -1468,13 +1511,13 @@ namespace EDX
 					projShape.Add(1);
 
 				Tensor<T> ret;
-				ret.Assign(initVal, Array<int>(projShape));
+				ret.Assign(initVal, TensorArray(projShape));
 
-				StaticArray<int, 4> index;
+				TensorArray index;
 				index.ResizeZeroed(lhs.Dim());
 				for (int i = 0; i < lhs.LinearSize(); i++, lhs.IterateIndex(index))
 				{
-					StaticArray<int, 4> projIndex;
+					TensorArray projIndex;
 
 					for (int i = 0; i < index.Size(); i++)
 					{

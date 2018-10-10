@@ -58,7 +58,7 @@ void LeNetTrain()
 	Array<Symbol*> symbolsToEvaluate = net.GetGradientSymbols(symbolsToTrain);
 	symbolsToEvaluate.Add(leNet.leNet); // Add loss layer
 
-	const Array<int>& dataShape = dataTensor.Shape();
+	const TensorArray& dataShape = dataTensor.Shape();
 
 	Adam adam;
 
