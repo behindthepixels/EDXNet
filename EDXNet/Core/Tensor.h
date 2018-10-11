@@ -3,6 +3,7 @@
 #include "Containers/Array.h"
 #include "Containers/Algorithm.h"
 #include "Math/SparseMatrix.h"
+#include "Core/Random.h"
 
 #include "../OpenBLAS/include/cblas.h"
 #include <complex>
@@ -91,7 +92,7 @@ namespace EDX
 			}
 
 
-			const int operator [] (const int idx) const
+			int operator [] (const int idx) const
 			{
 				Assert(idx < MaxArraySize);
 				return x[idx];
@@ -104,7 +105,7 @@ namespace EDX
 			}
 
 
-			const int Size() const
+			int Size() const
 			{
 				return mSize;
 			}
@@ -253,8 +254,6 @@ namespace EDX
 
 			void Reshape(const TensorArray& shape)
 			{
-				auto oldSize = mLinearSize;
-
 				mShape = shape;
 				Resize_Common();
 
@@ -1215,7 +1214,7 @@ namespace EDX
 
 				const int N = inTensor.Shape(0);
 
-				Tensorf ret = inTensor;
+				Tensor<T> ret = inTensor;
 				float* A = ret.Data();
 
 				int* ipiv = new int[N + 1];
@@ -1519,19 +1518,19 @@ namespace EDX
 				{
 					TensorArray projIndex;
 
-					for (int i = 0; i < index.Size(); i++)
+					for (int j = 0; j < index.Size(); j++)
 					{
 						if (!keepDim)
 						{
-							if (!axises.Contains(i))
-								projIndex.Add(index[i]);
+							if (!axises.Contains(j))
+								projIndex.Add(index[j]);
 						}
 						else
 						{
-							if (axises.Contains(i))
+							if (axises.Contains(j))
 								projIndex.Add(0);
 							else
-								projIndex.Add(index[i]);
+								projIndex.Add(index[j]);
 						}
 					}
 
