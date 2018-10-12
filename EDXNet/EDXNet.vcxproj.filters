@@ -108,6 +108,9 @@
     <ClInclude Include="Models\StyleTransferVGG19.h">
       <Filter>Source Files\Models</Filter>
     </ClInclude>
+    <ClInclude Include="Core\TensorKernels.cuh">
+      <Filter>Source Files\Core</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Core\NeuralNet.cpp">

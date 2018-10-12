@@ -1,12 +1,13 @@
-#define _CRTDBG_MAP_ALLOC  
-#include <stdlib.h>  
-#include <crtdbg.h>  
 
 #include "Core/EDXNet.h"
 
 #include "Containers/Map.h"
 #include "Core/SmartPointer.h"
 #include "Windows/Bitmap.h"
+
+#define _CRTDBG_MAP_ALLOC  
+#include <stdlib.h>  
+#include <crtdbg.h>
 
 #include <iostream>
 #include <fstream>
@@ -566,6 +567,8 @@ void TestTotalVariationLoss()
 //	SparseMatrixf laplacian = MattingLaplacian::CalcLaplacianMatrix(A);
 //}
 
+void TestCUDA();
+
 void main()
 {
 	//TestFullyConnected();
@@ -585,18 +588,7 @@ void main()
 	//cublasStatus_t status;
 	//status = cublasCreate(&Tensorf::mCublasHandle);
 
-	Tensorf A = { { 1,2,3,4,5,8,3,1,4 } };
-	Tensorf B = {
-		{ 1 },
-		{ 2 },
-		{ 3 },
-		{ 4 },
-		{ 5 }
-	};
-	Tensorf C = A + B;
-
-	//float pHostC[45] = { 0 };
-	//cudaMemcpy((void*)pHostC, (void*)C.Data(), C.LinearSize() * sizeof(float), cudaMemcpyDeviceToHost);
+	TestCUDA();
 
 
 	Assertf(!_CrtDumpMemoryLeaks(), "Memory leak detected. See debug output for details");
