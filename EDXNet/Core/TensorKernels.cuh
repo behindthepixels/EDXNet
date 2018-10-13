@@ -1,6 +1,6 @@
 
 template<typename ExpType, typename T>
-__global__ void ExecuteExpressionKernel(const ExpType rhs, T* pData, const TensorIndex tensorIndex)
+__global__ void ExecuteExpressionKernel(const ExpType rhs, T* pData, const TensorParams tensorIndex)
 {
 	const int i = threadIdx.x + blockIdx.x * blockDim.x;
 
@@ -11,7 +11,7 @@ __global__ void ExecuteExpressionKernel(const ExpType rhs, T* pData, const Tenso
 }
 
 template<typename ExpType, typename T>
-void InvokeExecuteExpression(const ExpType& rhs, T* pData, const TensorIndex& tensorIndex)
+void InvokeExecuteExpression(const ExpType& rhs, T* pData, const TensorParams& tensorIndex)
 {
 	const int linearSize = tensorIndex.LinearSize();
 	const int blockDim = 64;
@@ -29,13 +29,13 @@ __global__ void ElementWiseBinaryOpInplaceKernel(TensorT lhs, const TensorT rhs,
 	if (i >= lhs.LinearSize())
 		return;
 
-	TensorArray leftIndex;
+	TensorShape leftIndex;
 	leftIndex.Resize(lhs.Dim());
 
-	TensorArray rightIndex;
+	TensorShape rightIndex;
 	rightIndex.Resize(rhs.Dim());
 
-	TensorArray index = lhs.Index(i);
+	TensorShape index = lhs.Index(i);
 	for (int j = 0; j < lhs.Dim(); j++)
 	{
 		leftIndex[j] = index[j + lhs.Dim() - lhs.Dim()];

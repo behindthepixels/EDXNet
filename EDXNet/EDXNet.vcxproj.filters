@@ -28,9 +28,6 @@
     <Filter Include="Source Files\Models">
       <UniqueIdentifier>{b80105be-2c3e-41b3-b874-ec4584348a9a}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Kernels">
-      <UniqueIdentifier>{0d57e176-f0a5-4461-a97e-89509a747a96}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Core\NeuralNet.h">
@@ -163,10 +160,5 @@
     <Natvis Include="TensorVis.natvis">
       <Filter>Source Files</Filter>
     </Natvis>
-  </ItemGroup>
-  <ItemGroup>
-    <CudaCompile Include="Kernels\ElementWiseOp.cu">
-      <Filter>Source Files\Kernels</Filter>
-    </CudaCompile>
   </ItemGroup>
 </Project>

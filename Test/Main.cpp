@@ -22,7 +22,7 @@ void TestFullyConnected()
 {
 	int numInputs = 2;
 	int numHidden = 3;
-	TensorArray inputShape = { 4, 5, 6 };
+	TensorShape inputShape = { 4, 5, 6 };
 
 	int inputSize = numInputs * Algorithm::Accumulate(inputShape, 1, Algorithm::Multiply<>());
 	int weightSize = numHidden * Algorithm::Accumulate(inputShape, 1, Algorithm::Multiply<>());
@@ -86,8 +86,8 @@ void TestFullyConnected()
 
 bool TestConvolution()
 {
-	TensorArray x_shape = { 2, 3, 4, 4 };
-	TensorArray w_shape = { 3, 3, 4, 4 };
+	TensorShape x_shape = { 2, 3, 4, 4 };
+	TensorShape w_shape = { 3, 3, 4, 4 };
 
 	int xSize = Algorithm::Accumulate(x_shape, 1, Algorithm::Multiply<>());
 	int wSize = Algorithm::Accumulate(w_shape, 1, Algorithm::Multiply<>());
@@ -100,7 +100,7 @@ bool TestConvolution()
 	Symbol* weights = NeuralNet::Create<Variable>(w);
 	Symbol* biases = NeuralNet::Create<Variable>(b);
 
-	Symbol* convolution = NeuralNet::Create<Convolution>(data, weights, biases, TensorArray({ 4, 4 }), 3, TensorArray({ 2, 2 }), TensorArray({ 1, 1 }));
+	Symbol* convolution = NeuralNet::Create<Convolution>(data, weights, biases, TensorShape({ 4, 4 }), 3, TensorShape({ 2, 2 }), TensorShape({ 1, 1 }));
 
 	NeuralNet net(convolution, true);
 
@@ -198,11 +198,11 @@ bool TestRelu()
 
 void TestPooling()
 {
-	TensorArray xShape = { 2,3,4,4 };
+	TensorShape xShape = { 2,3,4,4 };
 	Tensorf input = Tensorf::LinSpace(-0.3f, 0.4f, Algorithm::Accumulate(xShape, 1, Algorithm::Multiply<>())).Reshape(xShape);
 
 	Symbol* x = NeuralNet::Create<Variable>(input);
-	Symbol* pooling = NeuralNet::Create<MaxPooling>(x, TensorArray({ 2,2 }), TensorArray({ 2,2 }), TensorArray({ 0,0 }));
+	Symbol* pooling = NeuralNet::Create<MaxPooling>(x, TensorShape({ 2,2 }), TensorShape({ 2,2 }), TensorShape({ 0,0 }));
 
 	NeuralNet net(pooling, true);
 

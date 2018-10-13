@@ -41,7 +41,7 @@ namespace EDX
 			enum { Value = IsIntegralType<Last>::Value };
 		};
 
-		struct TensorArray
+		struct TensorShape
 		{
 			typedef int ElementType;
 
@@ -49,12 +49,12 @@ namespace EDX
 			int x[MaxArraySize];
 			int mSize = 0;
 
-			TENSOR_INLINE TensorArray()
+			TENSOR_INLINE TensorShape()
 			{
 				mSize = x[0] = x[1] = x[2] = x[3] = x[4] = 0;
 			}
 
-			__forceinline TensorArray(std::initializer_list<int> InitList)
+			__forceinline TensorShape(std::initializer_list<int> InitList)
 			{
 				this->operator=(InitList);
 			}
@@ -64,7 +64,7 @@ namespace EDX
 				Assign(InitList.begin(), InitList.size());
 			}
 
-			TENSOR_INLINE bool operator == (const TensorArray& rhs) const
+			TENSOR_INLINE bool operator == (const TensorShape& rhs) const
 			{
 				if (mSize != rhs.Size())
 				{
@@ -80,7 +80,7 @@ namespace EDX
 				return true;
 			}
 
-			TENSOR_INLINE bool operator != (const TensorArray& rhs) const
+			TENSOR_INLINE bool operator != (const TensorShape& rhs) const
 			{
 				return !(*this == rhs);
 			}
@@ -167,7 +167,7 @@ namespace EDX
 				return false;
 			}
 
-			friend Stream& operator << (Stream& stream, TensorArray& A)
+			friend Stream& operator << (Stream& stream, TensorShape& A)
 			{
 				// Save array.
 				stream << A.mSize;
@@ -179,7 +179,7 @@ namespace EDX
 				return stream;
 			}
 
-			friend Stream& operator >> (Stream& stream, TensorArray& A)
+			friend Stream& operator >> (Stream& stream, TensorShape& A)
 			{
 				// Load array.
 				int32 NewNum;
@@ -199,24 +199,24 @@ namespace EDX
 			// DO NOT USE DIRECTLY
 			// STL-like iterators to enable range-based for loop support.
 			// --------------------------------------------------------------------------------------------
-			__forceinline friend int*			begin(TensorArray& shape) { return shape.Data(); }
-			__forceinline friend const int*		begin(const TensorArray& shape) { return shape.Data(); }
-			__forceinline friend int*			end(TensorArray& shape) { return shape.Data() + shape.Size(); }
-			__forceinline friend const int*		end(const TensorArray& shape) { return shape.Data() + shape.Size(); }
+			__forceinline friend int*			begin(TensorShape& shape) { return shape.Data(); }
+			__forceinline friend const int*		begin(const TensorShape& shape) { return shape.Data(); }
+			__forceinline friend int*			end(TensorShape& shape) { return shape.Data() + shape.Size(); }
+			__forceinline friend const int*		end(const TensorShape& shape) { return shape.Data() + shape.Size(); }
 		};
 
-		//using TensorArray = StaticArray<int, 5>;
+		//using TensorShape = StaticArray<int, 5>;
 
-		class TensorIndex
+		class TensorParams
 		{
 		protected:
-			TensorArray mShape;
-			TensorArray mStrides;
+			TensorShape mShape;
+			TensorShape mStrides;
 			int mLinearSize;
 			bool mTransposed = false;
 
 		public:
-			__forceinline TensorIndex()
+			__forceinline TensorParams()
 				: mLinearSize(0)
 			{
 			}
@@ -230,7 +230,7 @@ namespace EDX
 				Resize_Common();
 			}
 
-			void Resize(const TensorArray& shape)
+			void Resize(const TensorShape& shape)
 			{
 				mShape = shape;
 				Resize_Common();
@@ -251,7 +251,7 @@ namespace EDX
 				Assert(mLinearSize == oldSize);
 			}
 
-			void Reshape(const TensorArray& shape)
+			void Reshape(const TensorShape& shape)
 			{
 #if defined(_DEBUG) && !defined(__CUDACC__) 
 				auto oldSize = mLinearSize;
@@ -263,7 +263,7 @@ namespace EDX
 				Assert(mLinearSize == oldSize);
 			}
 			
-			void Transpose(const TensorArray& transposeDim = {})
+			void Transpose(const TensorShape& transposeDim = {})
 			{
 				if (transposeDim.Empty())
 				{
@@ -272,8 +272,8 @@ namespace EDX
 				}
 				else
 				{
-					TensorArray shapeCopy = mShape;
-					TensorArray strideCopy = mStrides;
+					TensorShape shapeCopy = mShape;
+					TensorShape strideCopy = mStrides;
 					for (int i = 0; i < transposeDim.Size(); i++)
 					{
 						mShape[i] = shapeCopy[transposeDim[i]];
@@ -294,7 +294,7 @@ namespace EDX
 				return LinearIndex<size>(_idx);
 			}
 
-			TENSOR_INLINE int LinearIndex(const TensorArray& idx) const
+			TENSOR_INLINE int LinearIndex(const TensorShape& idx) const
 			{
 				const int size = idx.Size();
 				Assertf(size == mShape.Size(), "Input index dimension does not match with array dimension.");
@@ -324,11 +324,11 @@ namespace EDX
 				return ret;
 			}
 
-			TENSOR_INLINE TensorArray Index(int linearIdx) const
+			TENSOR_INLINE TensorShape Index(int linearIdx) const
 			{
 				Assert(linearIdx < mLinearSize);
 
-				TensorArray vRet;
+				TensorShape vRet;
 				vRet.Resize(mShape.Size());
 				for (int i = 0; i < mShape.Size(); i++)
 				{
@@ -343,7 +343,7 @@ namespace EDX
 				return mLinearSize;
 			}
 			
-			TENSOR_INLINE bool IndexRangeCheck(const TensorArray& index) const
+			TENSOR_INLINE bool IndexRangeCheck(const TensorShape& index) const
 			{
 				for (int i = 0; i < mShape.Size(); i++)
 				{
@@ -353,7 +353,7 @@ namespace EDX
 				return true;
 			}
 
-			TENSOR_INLINE void IterateIndex(TensorArray& index) const
+			TENSOR_INLINE void IterateIndex(TensorShape& index) const
 			{
 				for (int i = mShape.Size() - 1; i >= 0; i--)
 				{
@@ -372,12 +372,12 @@ namespace EDX
 				return mShape[iDim];
 			}
 
-			TENSOR_INLINE const TensorArray& Shape() const
+			TENSOR_INLINE const TensorShape& Shape() const
 			{
 				return mShape;
 			}
 
-			TENSOR_INLINE TensorArray Shape()
+			TENSOR_INLINE TensorShape Shape()
 			{
 				return mShape;
 			}
@@ -388,10 +388,10 @@ namespace EDX
 				return mStrides[iDim];
 			}
 
-			__forceinline TensorIndex GetSliceIndex(int subDim) const
+			__forceinline TensorParams GetSliceIndex(int subDim) const
 			{
 				Assert(subDim <= mShape.Size());
-				TensorIndex ret;
+				TensorParams ret;
 
 				if (subDim < mShape.Size())
 				{
@@ -406,10 +406,10 @@ namespace EDX
 				return ret;
 			}
 
-			__forceinline TensorIndex GetSectionIndex(int num) const
+			__forceinline TensorParams GetSectionIndex(int num) const
 			{
 				Assert(num < mShape[0]);
-				TensorIndex ret;
+				TensorParams ret;
 
 				ret.mShape = mShape;
 				ret.mShape[0] = num;
@@ -446,7 +446,7 @@ namespace EDX
 			}
 		};
 
-		static TensorArray BroadcastShape(const TensorArray& leftShape, const TensorArray& rightShape)
+		static TensorShape BroadcastShape(const TensorShape& leftShape, const TensorShape& rightShape)
 		{
 			if (leftShape == rightShape) // Trivially broadcasted
 			{
@@ -458,7 +458,7 @@ namespace EDX
 			const auto& greaterShape = leftDim > rightDim ? leftShape : rightShape;
 			const int retDim = greaterShape.Size();
 
-			TensorArray ret;
+			TensorShape ret;
 			ret.Resize(retDim);
 
 			int k = retDim - 1;
@@ -493,7 +493,7 @@ namespace EDX
 		{
 		protected:
 			T* mpData;
-			TensorIndex mIndex;
+			TensorParams mParams;
 			bool mReleaseData = true;
 
 		public:
@@ -542,7 +542,7 @@ namespace EDX
 			Tensor& operator = (Tensor&& rhs)
 			{
 				Free();
-				mIndex = rhs.mIndex;
+				mParams = rhs.mParams;
 				mpData = rhs.mpData;
 				mReleaseData = rhs.mReleaseData;
 				rhs.mpData = nullptr;
@@ -583,18 +583,18 @@ namespace EDX
 				Resize(src.Shape());
 
 #ifdef __CUDACC__
-				InvokeExecuteExpression(src, mpData, mIndex);
+				InvokeExecuteExpression(src, mpData, mParams);
 #endif
 
 				return *this;
 			}
 
-			TENSOR_INLINE T Eval(const int idx, const TensorIndex& broadcastIndex) const
+			TENSOR_INLINE T Eval(const int idx, const TensorParams& broadcastIndex) const
 			{
-				TensorArray selfIndex;
+				TensorShape selfIndex;
 				selfIndex.Resize(Dim());
 
-				TensorArray index = broadcastIndex.Index(idx);
+				TensorShape index = broadcastIndex.Index(idx);
 				for (int j = 0; j < Dim(); j++)
 				{
 					selfIndex[j] = index[j + broadcastIndex.Shape().Size() - Dim()];
@@ -673,7 +673,7 @@ namespace EDX
 			template<int level>
 			void NestedInitializerListHelper(NestedInitializerList<T, level> initList)
 			{
-				Resize(DeriveShapeFromNestedInitList<TensorArray>(initList));
+				Resize(DeriveShapeFromNestedInitList<TensorShape>(initList));
 				//InitListNestedCopy(Data(), initList);
 				T* pTempData = new T[LinearSize()];
 				T* pIter = pTempData;
@@ -688,16 +688,16 @@ namespace EDX
 				Resize({ shape... });
 			}
 
-			void Resize(const TensorArray& shape)
+			void Resize(const TensorShape& shape)
 			{
 				int newLinSize = Algorithm::Accumulate(shape, int(1), Algorithm::Multiply<>());
 				if (LinearSize() != newLinSize)
 				{
 					Free();
-					mIndex.Resize(shape);
+					mParams.Resize(shape);
 
-					//mpData = Memory::AlignedAlloc<T>(mIndex.LinearSize());
-					cudaMalloc<T>(&mpData, mIndex.LinearSize() * sizeof(T));
+					//mpData = Memory::AlignedAlloc<T>(mParams.LinearSize());
+					cudaMalloc<T>(&mpData, mParams.LinearSize() * sizeof(T));
 
 					Assert(mpData);
 
@@ -709,14 +709,14 @@ namespace EDX
 				}
 			}
 
-			void Assign(const T* pData, const TensorArray& shape)
+			void Assign(const T* pData, const TensorShape& shape)
 			{
 				Resize(shape);
 				//Memory::Memcpy(mpData, pData, LinearSize() * sizeof(T));
 				cudaMemcpy(mpData, pData, LinearSize() * sizeof(T));
 			}
 
-			void Assign(const T val, const TensorArray& shape)
+			void Assign(const T val, const TensorShape& shape)
 			{
 				Resize(shape);
 
@@ -733,24 +733,24 @@ namespace EDX
 			template<typename... Shape>
 			Tensor Reshape(Shape... shape)
 			{
-				mIndex.Reshape(shape...);
+				mParams.Reshape(shape...);
 				return *this;
 			}
 
-			Tensor Reshape(const TensorArray& shape)
+			Tensor Reshape(const TensorShape& shape)
 			{
-				mIndex.Reshape(shape);
+				mParams.Reshape(shape);
 				return *this;
 			}
 
-			Tensor GetTransposed(const TensorArray& transposeDim = {})
+			Tensor GetTransposed(const TensorShape& transposeDim = {})
 			{
 				Tensor ret;
-				ret.mIndex = mIndex;
+				ret.mParams = mParams;
 				ret.mpData = mpData;
 				ret.mReleaseData = false;
 
-				ret.mIndex.Transpose(transposeDim);
+				ret.mParams.Transpose(transposeDim);
 
 				return ret;
 			}
@@ -763,11 +763,11 @@ namespace EDX
 				return GetWithShape({ shape... });
 			}
 
-			Tensor GetWithShape(const TensorArray& shape)
+			Tensor GetWithShape(const TensorShape& shape)
 			{
 				Tensor ret;
-				ret.mIndex = mIndex;
-				ret.mIndex.Reshape(shape);
+				ret.mParams = mParams;
+				ret.mParams.Reshape(shape);
 				ret.mpData = mpData;
 				ret.mReleaseData = false;
 				return ret;
@@ -781,11 +781,11 @@ namespace EDX
 				return GetWithShape({ shape... });
 			}
 
-			const Tensor GetWithShape(const TensorArray& shape) const
+			const Tensor GetWithShape(const TensorShape& shape) const
 			{
 				Tensor ret;
-				ret.mIndex = mIndex;
-				ret.mIndex.Reshape(shape);
+				ret.mParams = mParams;
+				ret.mParams.Reshape(shape);
 				ret.mpData = mpData;
 				ret.mReleaseData = false;
 				return ret;
@@ -799,11 +799,11 @@ namespace EDX
 				return GetSlice({ index... });
 			}
 
-			Tensor GetSlice(const TensorArray& index)
+			Tensor GetSlice(const TensorShape& index)
 			{
 				Tensor ret;
 
-				TensorArray filledIndex = index;
+				TensorShape filledIndex = index;
 				int numComponentToFill = Dim() - index.Size();
 				while (numComponentToFill--)
 				{
@@ -811,7 +811,7 @@ namespace EDX
 				}
 
 				ret.mpData = &this->operator()(filledIndex);
-				ret.mIndex = mIndex.GetSliceIndex(index.Size());
+				ret.mParams = mParams.GetSliceIndex(index.Size());
 				ret.mReleaseData = false;
 				return ret;
 			}
@@ -825,11 +825,11 @@ namespace EDX
 				return GetSlice({ index... });
 			}
 
-			const Tensor GetSlice(const TensorArray& index) const
+			const Tensor GetSlice(const TensorShape& index) const
 			{
 				Tensor ret;
 
-				TensorArray filledIndex = index;
+				TensorShape filledIndex = index;
 				int numComponentToFill = Dim() - index.Size();
 				while (numComponentToFill--)
 				{
@@ -837,7 +837,7 @@ namespace EDX
 				}
 
 				ret.mpData = &this->operator()(filledIndex);
-				ret.mIndex = mIndex.GetSliceIndex(index.Size());
+				ret.mParams = mParams.GetSliceIndex(index.Size());
 				ret.mReleaseData = false;
 				return ret;
 			}
@@ -848,8 +848,8 @@ namespace EDX
 
 				Tensor ret;
 
-				ret.mpData = mpData + from * mIndex.Stride(0);
-				ret.mIndex = mIndex.GetSectionIndex(to - from);
+				ret.mpData = mpData + from * mParams.Stride(0);
+				ret.mParams = mParams.GetSectionIndex(to - from);
 				ret.mReleaseData = false;
 
 				return ret;
@@ -861,8 +861,8 @@ namespace EDX
 
 				Tensor ret;
 
-				ret.mpData = mpData + from * mIndex.Stride(0);
-				ret.mIndex = mIndex.GetSectionIndex(to - from);
+				ret.mpData = mpData + from * mParams.Stride(0);
+				ret.mParams = mParams.GetSectionIndex(to - from);
 				ret.mReleaseData = false;
 
 				return ret;
@@ -870,53 +870,53 @@ namespace EDX
 
 			__forceinline bool IsTransposed() const
 			{
-				return mIndex.IsTransposed();
+				return mParams.IsTransposed();
 			}
 
 			__forceinline void Clear()
 			{
-				//Memory::SafeClear(mpData, mIndex.LinearSize());
+				//Memory::SafeClear(mpData, mParams.LinearSize());
 
 				if (mpData)
-					cudaMemset(mpData, 0, mIndex.LinearSize() * sizeof(T));
+					cudaMemset(mpData, 0, mParams.LinearSize() * sizeof(T));
 			}
 
 			template<typename... Index>
 			TENSOR_INLINE int LinearIndex(Index... idx) const
 			{
-				return mIndex.LinearIndex(idx...);
+				return mParams.LinearIndex(idx...);
 			}
-			TENSOR_INLINE int LinearIndex(const TensorArray& idx) const
+			TENSOR_INLINE int LinearIndex(const TensorShape& idx) const
 			{
-				return mIndex.LinearIndex(idx);
+				return mParams.LinearIndex(idx);
 			}
-			TENSOR_INLINE virtual TensorArray Index(int linearIdx) const
+			TENSOR_INLINE virtual TensorShape Index(int linearIdx) const
 			{
-				return mIndex.Index(linearIdx);
+				return mParams.Index(linearIdx);
 			}
 			TENSOR_INLINE int LinearSize() const
 			{
-				return mIndex.LinearSize();
+				return mParams.LinearSize();
 			}
-			TENSOR_INLINE bool IndexRangeCheck(const TensorArray& index) const
+			TENSOR_INLINE bool IndexRangeCheck(const TensorShape& index) const
 			{
-				return mIndex.IndexRangeCheck(index);
+				return mParams.IndexRangeCheck(index);
 			}
-			TENSOR_INLINE void IterateIndex(TensorArray& index) const
+			TENSOR_INLINE void IterateIndex(TensorShape& index) const
 			{
-				return mIndex.IterateIndex(index);
+				return mParams.IterateIndex(index);
 			}
 			TENSOR_INLINE int Shape(int iDim) const
 			{
-				return mIndex.Shape(iDim);
+				return mParams.Shape(iDim);
 			}
-			TENSOR_INLINE const TensorArray& Shape() const
+			TENSOR_INLINE const TensorShape& Shape() const
 			{
-				return mIndex.Shape();
+				return mParams.Shape();
 			}
-			TENSOR_INLINE TensorArray Shape()
+			TENSOR_INLINE TensorShape Shape()
 			{
-				return mIndex.Shape();
+				return mParams.Shape();
 			}
 			TENSOR_INLINE int Dim() const
 			{
@@ -924,7 +924,7 @@ namespace EDX
 			}
 			TENSOR_INLINE int Stride(int iDim) const
 			{
-				return mIndex.Stride(iDim);
+				return mParams.Stride(iDim);
 			}
 			TENSOR_INLINE bool Empty() const
 			{
@@ -943,22 +943,22 @@ namespace EDX
 				return mpData[LinearIndex(idx...)];
 			}
 
-			TENSOR_INLINE T& operator [] (const TensorArray& idx)
+			TENSOR_INLINE T& operator [] (const TensorShape& idx)
 			{
 				return mpData[LinearIndex(idx)];
 			}
-			TENSOR_INLINE const T& operator [] (const TensorArray& idx) const
+			TENSOR_INLINE const T& operator [] (const TensorShape& idx) const
 			{
 				return mpData[LinearIndex(idx)];
 			}
 			TENSOR_INLINE T& operator [] (const int idx)
 			{
-				Assert(idx < mIndex.LinearSize());
+				Assert(idx < mParams.LinearSize());
 				return mpData[idx];
 			}
 			TENSOR_INLINE const T& operator [] (const int idx) const
 			{
-				Assert(idx < mIndex.LinearSize());
+				Assert(idx < mParams.LinearSize());
 				return mpData[idx];
 			}
 			TENSOR_INLINE const T* Data() const
@@ -996,7 +996,7 @@ namespace EDX
 			friend Stream& operator >> (Stream& stream, Tensor& A)
 			{
 				// Load array.
-				TensorArray newShape;
+				TensorShape newShape;
 				stream >> newShape;
 				A.Resize(newShape);
 				stream.ByteOrderRead(A.Data(), A.LinearSize() * sizeof(T));
@@ -1079,8 +1079,8 @@ namespace EDX
 
 			static Tensor<T> Dot(const Tensor<T>& lhs, const Tensor<T>& rhs)
 			{
-				const TensorArray& leftShape = lhs.Shape();
-				const TensorArray& rightShape = rhs.Shape();
+				const TensorShape& leftShape = lhs.Shape();
+				const TensorShape& rightShape = rhs.Shape();
 
 				Assertf(leftShape.Size() == rightShape.Size(), "Number of dimensions has to match between left and right tensors in dot product.");
 				Assertf(leftShape.Size() <= 2, "Dot product only supports tensors less than 2 dimensions.");
@@ -1097,8 +1097,8 @@ namespace EDX
 
 			static void DotInplace(const Tensor<T>& lhs, const Tensor<T>& rhs, Tensor<T>* pResult)
 			{
-				const TensorArray& leftShape = lhs.Shape();
-				const TensorArray& rightShape = rhs.Shape();
+				const TensorShape& leftShape = lhs.Shape();
+				const TensorShape& rightShape = rhs.Shape();
 
 				Assertf(leftShape.Size() == rightShape.Size(), "Number of dimensions has to match between left and right tensors in dot product.");
 				Assertf(leftShape.Size() <= 2, "Dot product only supports tensors less than 2 dimensions.");
@@ -1141,7 +1141,7 @@ namespace EDX
 			
 			static Tensor<T> Dot(const SparseMatrix<T>& lhs, const Tensor<T>& rhs)
 			{
-				const TensorArray& rightShape = rhs.Shape();
+				const TensorShape& rightShape = rhs.Shape();
 
 				Assertf(rightShape.Size() <= 2, "Dot product only supports tensors less than 2 dimensions.");
 				Assertf(!(rightShape.Size() == 2 && lhs.n != rightShape[0]), "Dimension mismatch for tensor multiply.");
@@ -1156,7 +1156,7 @@ namespace EDX
 
 			static void DotInplace(const SparseMatrix<T>& lhs, const Tensor<T>& rhs, Tensor<T>* pResult)
 			{
-				const TensorArray& rightShape = rhs.Shape();
+				const TensorShape& rightShape = rhs.Shape();
 
 				Assertf(rightShape.Size() <= 2, "Dot product only supports tensors less than 2 dimensions.");
 				Assertf(!(rightShape.Size() == 2 && lhs.n != rightShape[0]), "Dimension mismatch for tensor multiply.");
@@ -1171,11 +1171,11 @@ namespace EDX
 				});
 			}
 
-			static Tensor<T> Transpose(const Tensor<T>& inTensor, const TensorArray& transposeDim = {})
+			static Tensor<T> Transpose(const Tensor<T>& inTensor, const TensorShape& transposeDim = {})
 			{
-				const TensorArray& inShape = inTensor.Shape();
+				const TensorShape& inShape = inTensor.Shape();
 
-				TensorArray transposedShape = inShape;
+				TensorShape transposedShape = inShape;
 				if (transposeDim.Empty())
 				{
 					Algorithm::Reverse(transposedShape);
@@ -1191,11 +1191,11 @@ namespace EDX
 				Tensor<T> ret;
 				ret.Resize(transposedShape);
 
-				TensorArray index;
+				TensorShape index;
 				index.ResizeZeroed(inTensor.Dim());
 				for (int i = 0; i < inTensor.LinearSize(); i++, inTensor.IterateIndex(index))
 				{
-					TensorArray transposedIndex = index;
+					TensorShape transposedIndex = index;
 
 					if (transposeDim.Empty())
 					{
@@ -1286,17 +1286,17 @@ namespace EDX
 				return ReluActivateExp(param);
 			}
 
-			static Tensor<T> Sum(const Tensor<T>& inTensor, const TensorArray& axises = { -1 }, const bool keepDim = false)
+			static Tensor<T> Sum(const Tensor<T>& inTensor, const TensorShape& axises = { -1 }, const bool keepDim = false)
 			{
 				return ProjectionOp(inTensor, axises, keepDim, Algorithm::Plus<T>(), T(0));
 			}
 
-			static Tensor<T> Product(const Tensor<T>& inTensor, const TensorArray& axises = { -1 })
+			static Tensor<T> Product(const Tensor<T>& inTensor, const TensorShape& axises = { -1 })
 			{
 				return ProjectionOp(inTensor, axises, keepDim, Algorithm::Multiply<>(), T(1));
 			}
 
-			static Tensor<T> Max(const Tensor<T>& inTensor, const TensorArray& axises = { -1 }, const bool keepDim = false)
+			static Tensor<T> Max(const Tensor<T>& inTensor, const TensorShape& axises = { -1 }, const bool keepDim = false)
 			{
 				struct MaxOp
 				{
@@ -1310,7 +1310,7 @@ namespace EDX
 				return ProjectionOp(inTensor, axises, keepDim, MaxOp(), T(Math::EDX_NEG_INFINITY));
 			}
 
-			static Tensor<T> Mean(const Tensor<T>& X, const TensorArray& axises = { -1 }, const bool keepDim = false)
+			static Tensor<T> Mean(const Tensor<T>& X, const TensorShape& axises = { -1 }, const bool keepDim = false)
 			{
 				Tensor<T> ret = Sum(X, axises);
 
@@ -1320,7 +1320,7 @@ namespace EDX
 				return ret;
 			}
 
-			static Tensor<T> StandardDeviation(const Tensor<T>& X, const TensorArray& axises = { -1 }, const bool keepDim = false)
+			static Tensor<T> StandardDeviation(const Tensor<T>& X, const TensorShape& axises = { -1 }, const bool keepDim = false)
 			{
 				Tensor<T> mean = Mean(X, axises, keepDim);
 				Tensor<T> centeredX = X - mean;
@@ -1407,13 +1407,13 @@ namespace EDX
 				//for (int i = 0; i < ret.LinearSize(); i++, ret.IterateIndex(index))
 				parallel_for(0u, (uint)ret.LinearSize(), [&](int i)
 				{
-					TensorArray leftIndex;
+					TensorShape leftIndex;
 					leftIndex.Resize(lhs.Dim());
 
-					TensorArray rightIndex;
+					TensorShape rightIndex;
 					rightIndex.Resize(rhs.Dim());
 
-					TensorArray index = ret.Index(i);
+					TensorShape index = ret.Index(i);
 					for (int j = 0; j < lhs.Dim(); j++)
 					{
 						leftIndex[j] = index[j + ret.Dim() - lhs.Dim()];
@@ -1449,13 +1449,13 @@ namespace EDX
 
 				//parallel_for(0u, (uint)lhs.LinearSize(), [&](int i)
 				//{
-				//	TensorArray leftIndex;
+				//	TensorShape leftIndex;
 				//	leftIndex.Resize(lhs.Dim());
 
-				//	TensorArray rightIndex;
+				//	TensorShape rightIndex;
 				//	rightIndex.Resize(rhs.Dim());
 
-				//	TensorArray index = lhs.Index(i);
+				//	TensorShape index = lhs.Index(i);
 				//	for (int j = 0; j < lhs.Dim(); j++)
 				//	{
 				//		leftIndex[j] = index[j + lhs.Dim() - lhs.Dim()];
@@ -1489,7 +1489,7 @@ namespace EDX
 			}
 
 			template<typename Op>
-			static Tensor<T> ProjectionOp(const Tensor<T>& lhs, const TensorArray& axises, const bool keepDim, Op op, T initVal)
+			static Tensor<T> ProjectionOp(const Tensor<T>& lhs, const TensorShape& axises, const bool keepDim, Op op, T initVal)
 			{
 				if (axises.Size() == 1 && axises[0] == -1)
 				{
@@ -1499,8 +1499,8 @@ namespace EDX
 					return lhs;
 				}
 
-				const TensorArray& inShape = lhs.Shape();
-				TensorArray projShape;
+				const TensorShape& inShape = lhs.Shape();
+				TensorShape projShape;
 				for (int i = 0; i < inShape.Size(); i++)
 				{
 					if (!keepDim)
@@ -1521,13 +1521,13 @@ namespace EDX
 					projShape.Add(1);
 
 				Tensor<T> ret;
-				ret.Assign(initVal, TensorArray(projShape));
+				ret.Assign(initVal, TensorShape(projShape));
 
-				TensorArray index;
+				TensorShape index;
 				index.ResizeZeroed(lhs.Dim());
 				for (int i = 0; i < lhs.LinearSize(); i++, lhs.IterateIndex(index))
 				{
-					TensorArray projIndex;
+					TensorShape projIndex;
 
 					for (int j = 0; j < index.Size(); j++)
 					{

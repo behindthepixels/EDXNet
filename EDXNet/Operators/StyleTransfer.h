@@ -295,12 +295,12 @@ namespace EDX
 				DynamicSparseMatrixf sparseMat;
 				sparseMat.Resize(numPixels);
 
-				TensorIndex imgIndices;
+				TensorParams imgIndices;
 				imgIndices.Resize(imgHeight, imgWidth);
 
 				for (int n = 0; n < numPixels; n++)
 				{
-					TensorArray index = image.Index(n);
+					TensorShape index = image.Index(n);
 					if (index[1] < r || index[1] >= imgHeight - r ||
 						index[2] < r || index[2] >= imgWidth - r)
 					{

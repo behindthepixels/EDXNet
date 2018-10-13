@@ -23,12 +23,12 @@ struct TScalarExp : public TExp<TScalarExp<T>>
 	}
 
 	// evaluation function, evaluate this expression at position i
-	TENSOR_INLINE float Eval(const int i, const TensorIndex& broadcastIndex) const
+	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
 	{
 		return val;
 	}
 
-	__forceinline TensorArray Shape() const
+	__forceinline TensorShape Shape() const
 	{
 		return{ 1 };
 	}
@@ -54,12 +54,12 @@ struct TBinaryExp : public TExp<TBinaryExp<TOp, TLhs, TRhs>>
 	}
 
 	// evaluation function, evaluate this expression at position i
-	TENSOR_INLINE float Eval(const int i, const TensorIndex& broadcastIndex) const
+	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
 	{
 		return TOp::Exec(lhs.Eval(i, broadcastIndex), rhs.Eval(i, broadcastIndex));
 	}
 
-	__forceinline TensorArray Shape() const
+	__forceinline TensorShape Shape() const
 	{
 		return BroadcastShape(lhs.Shape(), rhs.Shape());
 	}
@@ -139,12 +139,12 @@ struct TUnaryExp : public TExp<TUnaryExp<TOp, TParam>>
 	}
 
 	// evaluation function, evaluate this expression at position i
-	TENSOR_INLINE float Eval(const int i, const TensorIndex& broadcastIndex) const
+	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
 	{
 		return TOp::Exec(param.Eval(i, broadcastIndex));
 	}
 
-	__forceinline TensorArray Shape() const
+	__forceinline TensorShape Shape() const
 	{
 		return param.Shape();
 	}
@@ -245,9 +245,9 @@ inline TUnaryExp<ReluOp, TParam> ReluActivateExp(const TExp<TParam>& param)
 struct TConstantExp : public TExp<TConstantExp>
 {
 	float val;
-	TensorArray shape;
+	TensorShape shape;
 
-	TConstantExp(const float _val, const TensorArray& _shape)
+	TConstantExp(const float _val, const TensorShape& _shape)
 		: val(_val)
 		, shape(_shape)
 	{
@@ -260,12 +260,12 @@ struct TConstantExp : public TExp<TConstantExp>
 	}
 
 	// evaluation function, evaluate this expression at position i
-	TENSOR_INLINE float Eval(const int i, const TensorIndex& broadcastIndex) const
+	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
 	{
 		return val;
 	}
 
-	__forceinline TensorArray Shape() const
+	__forceinline TensorShape Shape() const
 	{
 		return shape;
 	}
