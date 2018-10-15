@@ -556,7 +556,8 @@ namespace EDX
 					Free();
 					Resize(1);
 				}
-				*mpData = val;
+				//*mpData = val;
+				cudaMemcpy(mpData, &val, sizeof(T), cudaMemcpyHostToDevice);
 				mReleaseData = true;
 				return *this;
 			}
@@ -728,6 +729,12 @@ namespace EDX
 
 				for (int i = 0; i < LinearSize(); i++)
 					mpData[i] = val;
+			}
+
+			void MoveDevicePtr(T* pData, const TensorShape& shape)
+			{
+				Resize(shape);
+				mpData = pData;
 			}
 
 			template<typename... Shape>
@@ -1010,13 +1017,17 @@ namespace EDX
 			// ----------------------------------------------------------------
 			static Tensor<T> LinSpace(const T& start, const T& stop, const int& numSamples)
 			{
-				Tensor<T> ret;
-				ret.Resize(numSamples);
+				Array<T> arr;
+				arr.Resize(numSamples);
 
 				T step = (stop - start) / T(numSamples - 1);
 
 				for (int i = 0; i < numSamples; i++)
-					ret[i] = start + i * step;
+					arr[i] = start + i * step;
+
+				Tensor<T> ret;
+				ret.Resize(numSamples);
+				cudaMemcpy(ret.Data(), arr.Data(), numSamples * sizeof(T), cudaMemcpyHostToDevice);
 
 				return ret;
 			}
@@ -1298,16 +1309,7 @@ namespace EDX
 
 			static Tensor<T> Max(const Tensor<T>& inTensor, const TensorShape& axises = { -1 }, const bool keepDim = false)
 			{
-				struct MaxOp
-				{
-					// Universal reference and late binding
-					__forceinline T operator()(const T& lhs, const T& rhs)
-					{
-						return lhs > rhs ? lhs : rhs;
-					}
-				};
-
-				return ProjectionOp(inTensor, axises, keepDim, MaxOp(), T(Math::EDX_NEG_INFINITY));
+				return ProjectionOp(inTensor, axises, keepDim, Algorithm::Max<>(), T(Math::EDX_NEG_INFINITY));
 			}
 
 			static Tensor<T> Mean(const Tensor<T>& X, const TensorShape& axises = { -1 }, const bool keepDim = false)
@@ -1443,7 +1445,7 @@ namespace EDX
 					lhs.Resize(newShape);
 				}
 
-#if __CUDACC__
+#ifdef __CUDACC__
 				InvokeElementWiseBinaryOpInplace(lhs, rhs, op);
 #endif
 
@@ -1493,10 +1495,14 @@ namespace EDX
 			{
 				if (axises.Size() == 1 && axises[0] == -1)
 				{
-					//return Algorithm::Accumulate(lhs, initVal, op);
-
-					thrust::reduce(lhs.Data(), lhs.Data() + lhs.LinearSize(), initVal, op);
-					return lhs;
+#ifdef __CUDACC__
+					T* reduced = InvokeReduce(lhs.Data(), lhs.LinearSize(), initVal, op);
+					Tensor<T> ret;
+					ret.MoveDevicePtr(reduced, { 1 });
+					return ret;
+#else
+					return Algorithm::Accumulate(lhs, initVal, op);
+#endif
 				}
 
 				const TensorShape& inShape = lhs.Shape();
