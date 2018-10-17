@@ -2,8 +2,6 @@
 
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
-#include <thrust/reduce.h>
-#include <thrust/device_vector.h>
 
 #include "Containers/Array.h"
 #include "Containers/Algorithm.h"
@@ -364,6 +362,29 @@ namespace EDX
 					else
 						index[i] = 0;
 				}
+			}
+
+			TENSOR_INLINE bool IterateIndex(TensorShape& index, const TensorShape& axises /*Axises to iterate through*/) const
+			{
+				for (int i = mShape.Size() - 1; i >= 0; i--)
+				{
+					if (!axises.Contains(i))
+						continue;
+
+					index[i]++;
+
+					if (index[i] < mShape[i])
+					{
+						if (i == axises[0])
+							return false;
+
+						break;
+					}
+					else
+						index[i] = 0;
+				}
+
+				return true;
 			}
 
 			TENSOR_INLINE int Shape(int iDim) const
@@ -913,6 +934,10 @@ namespace EDX
 			{
 				return mParams.IterateIndex(index);
 			}
+			TENSOR_INLINE bool IterateIndex(TensorShape& index, const TensorShape& axises) const
+			{
+				return mParams.IterateIndex(index, axises);
+			}
 			TENSOR_INLINE int Shape(int iDim) const
 			{
 				return mParams.Shape(iDim);
@@ -1449,31 +1474,31 @@ namespace EDX
 				InvokeElementWiseBinaryOpInplace(lhs, rhs, op);
 #endif
 
-				//parallel_for(0u, (uint)lhs.LinearSize(), [&](int i)
-				//{
-				//	TensorShape leftIndex;
-				//	leftIndex.Resize(lhs.Dim());
+				parallel_for(0u, (uint)lhs.LinearSize(), [&](int i)
+				{
+					TensorShape leftIndex;
+					leftIndex.Resize(lhs.Dim());
 
-				//	TensorShape rightIndex;
-				//	rightIndex.Resize(rhs.Dim());
+					TensorShape rightIndex;
+					rightIndex.Resize(rhs.Dim());
 
-				//	TensorShape index = lhs.Index(i);
-				//	for (int j = 0; j < lhs.Dim(); j++)
-				//	{
-				//		leftIndex[j] = index[j + lhs.Dim() - lhs.Dim()];
-				//		if (leftIndex[j] >= lhs.Shape(j))
-				//			leftIndex[j] = 0;
-				//	}
+					TensorShape index = lhs.Index(i);
+					for (int j = 0; j < lhs.Dim(); j++)
+					{
+						leftIndex[j] = index[j + lhs.Dim() - lhs.Dim()];
+						if (leftIndex[j] >= lhs.Shape(j))
+							leftIndex[j] = 0;
+					}
 
-				//	for (int j = 0; j < rhs.Dim(); j++)
-				//	{
-				//		rightIndex[j] = index[j + lhs.Dim() - rhs.Dim()];
-				//		if (rightIndex[j] >= rhs.Shape(j))
-				//			rightIndex[j] = 0;
-				//	}
+					for (int j = 0; j < rhs.Dim(); j++)
+					{
+						rightIndex[j] = index[j + lhs.Dim() - rhs.Dim()];
+						if (rightIndex[j] >= rhs.Shape(j))
+							rightIndex[j] = 0;
+					}
 
-				//	lhs[i] = op(lhs(leftIndex), rhs(rightIndex));
-				//});
+					lhs[i] = op(lhs(leftIndex), rhs(rightIndex));
+				});
 			}
 
 			template<typename Op>
@@ -1507,6 +1532,7 @@ namespace EDX
 
 				const TensorShape& inShape = lhs.Shape();
 				TensorShape projShape;
+				TensorShape projShapeKeepDim;
 				for (int i = 0; i < inShape.Size(); i++)
 				{
 					if (!keepDim)
@@ -1521,41 +1547,35 @@ namespace EDX
 						else
 							projShape.Add(inShape[i]);
 					}
+
+					if (axises.Contains(i))
+						projShapeKeepDim.Add(1);
+					else
+						projShapeKeepDim.Add(inShape[i]);
 				}
 
 				if (projShape.Empty())
 					projShape.Add(1);
 
+				if (projShapeKeepDim.Empty())
+					projShapeKeepDim.Add(1);
+
+				TensorParams mTensorParamsKeepDim;
+				mTensorParamsKeepDim.Resize(projShapeKeepDim);
+
 				Tensor<T> ret;
 				ret.Assign(initVal, TensorShape(projShape));
-
-				TensorShape index;
-				index.ResizeZeroed(lhs.Dim());
-				for (int i = 0; i < lhs.LinearSize(); i++, lhs.IterateIndex(index))
+				//for (int i = 0; i < mTensorParamsKeepDim.LinearSize(); i++)
+				parallel_for(0, (int)mTensorParamsKeepDim.LinearSize(), [&](int i)
 				{
-					TensorShape projIndex;
+					TensorShape projIndex = mTensorParamsKeepDim.Index(i);
 
-					for (int j = 0; j < index.Size(); j++)
+					do
 					{
-						if (!keepDim)
-						{
-							if (!axises.Contains(j))
-								projIndex.Add(index[j]);
-						}
-						else
-						{
-							if (axises.Contains(j))
-								projIndex.Add(0);
-							else
-								projIndex.Add(index[j]);
-						}
+						ret[i] = op(ret[i], lhs(projIndex));
 					}
-
-					if (projIndex.Empty())
-						projIndex.Add(0);
-
-					ret(projIndex) = op(ret(projIndex), lhs[i]);
-				}
+					while (lhs.IterateIndex(projIndex, axises));
+				});
 
 				return ret;
 			}
