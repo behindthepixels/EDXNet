@@ -1065,10 +1065,14 @@ namespace EDX
 					return ret;
 
 				int numSamples = (stop - start) / step;
-				ret.Resize(numSamples);
+				Array<T> arr;
+				arr.Resize(numSamples);
 
 				for (int i = 0; i < numSamples; i++)
-					ret[i] = start + i * step;
+					arr[i] = start + i * step;
+
+				ret.Resize(numSamples);
+				cudaMemcpy(ret.Data(), arr.Data(), numSamples * sizeof(T), cudaMemcpyHostToDevice);
 
 				return ret;
 			}
@@ -1474,31 +1478,31 @@ namespace EDX
 				InvokeElementWiseBinaryOpInplace(lhs, rhs, op);
 #endif
 
-				parallel_for(0u, (uint)lhs.LinearSize(), [&](int i)
-				{
-					TensorShape leftIndex;
-					leftIndex.Resize(lhs.Dim());
+				//parallel_for(0u, (uint)lhs.LinearSize(), [&](int i)
+				//{
+				//	TensorShape leftIndex;
+				//	leftIndex.Resize(lhs.Dim());
 
-					TensorShape rightIndex;
-					rightIndex.Resize(rhs.Dim());
+				//	TensorShape rightIndex;
+				//	rightIndex.Resize(rhs.Dim());
 
-					TensorShape index = lhs.Index(i);
-					for (int j = 0; j < lhs.Dim(); j++)
-					{
-						leftIndex[j] = index[j + lhs.Dim() - lhs.Dim()];
-						if (leftIndex[j] >= lhs.Shape(j))
-							leftIndex[j] = 0;
-					}
+				//	TensorShape index = lhs.Index(i);
+				//	for (int j = 0; j < lhs.Dim(); j++)
+				//	{
+				//		leftIndex[j] = index[j + lhs.Dim() - lhs.Dim()];
+				//		if (leftIndex[j] >= lhs.Shape(j))
+				//			leftIndex[j] = 0;
+				//	}
 
-					for (int j = 0; j < rhs.Dim(); j++)
-					{
-						rightIndex[j] = index[j + lhs.Dim() - rhs.Dim()];
-						if (rightIndex[j] >= rhs.Shape(j))
-							rightIndex[j] = 0;
-					}
+				//	for (int j = 0; j < rhs.Dim(); j++)
+				//	{
+				//		rightIndex[j] = index[j + lhs.Dim() - rhs.Dim()];
+				//		if (rightIndex[j] >= rhs.Shape(j))
+				//			rightIndex[j] = 0;
+				//	}
 
-					lhs[i] = op(lhs(leftIndex), rhs(rightIndex));
-				});
+				//	lhs[i] = op(lhs(leftIndex), rhs(rightIndex));
+				//});
 			}
 
 			template<typename Op>
@@ -1560,22 +1564,27 @@ namespace EDX
 				if (projShapeKeepDim.Empty())
 					projShapeKeepDim.Add(1);
 
-				TensorParams mTensorParamsKeepDim;
-				mTensorParamsKeepDim.Resize(projShapeKeepDim);
+				TensorParams tensorParamsKeepDim;
+				tensorParamsKeepDim.Resize(projShapeKeepDim);
 
 				Tensor<T> ret;
-				ret.Assign(initVal, TensorShape(projShape));
-				//for (int i = 0; i < mTensorParamsKeepDim.LinearSize(); i++)
-				parallel_for(0, (int)mTensorParamsKeepDim.LinearSize(), [&](int i)
-				{
-					TensorShape projIndex = mTensorParamsKeepDim.Index(i);
+#ifdef __CUDACC__
+				ret.Resize(projShape);
+				InvokeTensorProjectionOp(ret, lhs, tensorParamsKeepDim, axises, op, initVal);
+#endif
 
-					do
-					{
-						ret[i] = op(ret[i], lhs(projIndex));
-					}
-					while (lhs.IterateIndex(projIndex, axises));
-				});
+				//ret.Assign(initVal, TensorShape(projShape));
+
+				//parallel_for(0, (int)tensorParamsKeepDim.LinearSize(), [&](int i)
+				//{
+				//	TensorShape projIndex = tensorParamsKeepDim.Index(i);
+
+				//	do
+				//	{
+				//		ret[i] = op(ret[i], lhs(projIndex));
+				//	}
+				//	while (lhs.IterateIndex(projIndex, axises));
+				//});
 
 				return ret;
 			}

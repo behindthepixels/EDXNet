@@ -17,7 +17,7 @@ template<typename ExpType, typename T>
 void InvokeExecuteExpression(const ExpType& rhs, T* pData, const TensorParams& tensorIndex)
 {
 	const int linearSize = tensorIndex.LinearSize();
-	const int blockDim = 64;
+	const int blockDim = 256;
 	const int gridDim = (linearSize + blockDim - 1) / blockDim;
 
 	ExecuteExpressionKernel<<<gridDim, blockDim>>>(rhs, pData, tensorIndex);
@@ -60,7 +60,7 @@ template<typename Op, typename TensorT>
 void InvokeElementWiseBinaryOpInplace(TensorT& lhs, const TensorT& rhs, Op op)
 {
 	const int linearSize = lhs.LinearSize();
-	const int blockDim = 64;
+	const int blockDim = 256;
 	const int gridDim = (linearSize + blockDim - 1) / blockDim;
 	
 	ElementWiseBinaryOpInplaceKernel<<<gridDim, blockDim>>>(lhs.Self(), rhs.Self(), op);
@@ -283,4 +283,34 @@ T* InvokeReduce(const T *pDataIn, const int n, T initVal, Op op)
 	cudaFree(pDataCopy);
 
 	return pDataOut;
+}
+
+template<typename TensorT, typename Op, typename T>
+__global__ void TensorProjectionOpKernel(TensorT ret, const TensorT lhs, const TensorParams Params, const TensorShape axises, Op op, T initVal)
+{
+	const int i = threadIdx.x + blockIdx.x * blockDim.x;
+
+	if (i >= ret.LinearSize())
+		return;
+
+	T reduced = initVal;
+
+	TensorShape projIndex = Params.Index(i);
+
+	do
+	{
+		reduced = op(reduced, lhs(projIndex));
+	} while (lhs.IterateIndex(projIndex, axises));
+
+	ret[i] = reduced;
+}
+
+template<typename TensorT, typename Op, typename T>
+void InvokeTensorProjectionOp(TensorT& ret, const TensorT& lhs, const TensorParams& params, const TensorShape& axises, Op op, T initVal)
+{
+	const int linearSize = ret.LinearSize();
+	const int blockDim = 256;
+	const int gridDim = linearSize;
+
+	TensorProjectionOpKernel << <gridDim, blockDim >> > (ret.Self(), lhs.Self(), params, axises, op, initVal);
 }

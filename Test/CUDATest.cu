@@ -36,4 +36,14 @@ void TestCUDA()
 		float pHost[1] = { 0 };
 		cudaMemcpy((void*)pHost, (void*)sum.Data(), sum.LinearSize() * sizeof(float), cudaMemcpyDeviceToHost);
 	}
+
+	{
+		Tensorf A = Tensorf::ArrayRange(0, 1000);
+		A.Reshape(5, 10, 4, 5);
+
+		Tensorf sum = Tensorf::Sum(A, { 0, 2 }, true);
+
+		float pHost[50] = { 0 };
+		cudaMemcpy((void*)pHost, (void*)sum.Data(), sum.LinearSize() * sizeof(float), cudaMemcpyDeviceToHost);
+	}
 }
