@@ -571,24 +571,24 @@ void TestCUDA();
 
 void main()
 {
-	//TestFullyConnected();
-	//TestRelu();
-	//TestPooling();
-	//TestConvolution();
-	//TestSoftmax();
-	//TestBatchNormalization();
-	////TestDropoutForward();
-	//TestAdam();
-	//TestStyleLoss();
-	//TestContentLoss();
-	//TestTotalVariationLoss();
+	cublasStatus_t status;
+	status = cublasCreate(&Cublas::GetHandle());
+
+	TestFullyConnected();
+	TestRelu();
+	TestPooling();
+	TestConvolution();
+	TestSoftmax();
+	TestBatchNormalization();
+	//TestDropoutForward();
+	TestAdam();
+	TestStyleLoss();
+	TestContentLoss();
+	TestTotalVariationLoss();
 
 	//TestMattingLaplacian();
 
-	//cublasStatus_t status;
-	//status = cublasCreate(&Tensorf::mCublasHandle);
-
-	TestCUDA();
+	//TestCUDA();
 
 
 	Assertf(!_CrtDumpMemoryLeaks(), "Memory leak detected. See debug output for details");

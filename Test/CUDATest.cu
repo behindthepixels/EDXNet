@@ -9,9 +9,7 @@ void TestCUDA()
 {
 	{
 		Tensorf A = { 1,2,3,4,5,8,3,1,4 };
-		Tensorf B = { 1,2,3,4,5 };
-
-		B.Reshape(5, 1);
+		Tensorf B = NestedInitializerList<float, 2>({ {1},{2},{3},{4},{5} });
 
 		Tensorf C = A + B + A + A * B;
 
@@ -45,5 +43,15 @@ void TestCUDA()
 
 		float pHost[50] = { 0 };
 		cudaMemcpy((void*)pHost, (void*)sum.Data(), sum.LinearSize() * sizeof(float), cudaMemcpyDeviceToHost);
+	}
+
+	{
+		Tensorf A = { {9,2,3,4,5} };
+		Tensorf B = NestedInitializerList<float, 2>({ {9},{2},{3},{4},{5} });
+
+		Tensorf C = Tensorf::Dot(B, A);
+
+		float pHost[25] = { 0 };
+		cudaMemcpy((void*)pHost, (void*)C.Data(), C.LinearSize() * sizeof(float), cudaMemcpyDeviceToHost);
 	}
 }

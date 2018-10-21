@@ -509,16 +509,32 @@ namespace EDX
 		#include "TensorKernels.cuh"
 #endif
 
-		template<class T>
-		class Tensor : public TExp<Tensor<T>>
+		// Singleton for storing cublas handle
+		class Cublas
+		{
+		public:
+			static cublasHandle_t& GetHandle()
+			{
+				static cublasHandle_t Handle;
+				return Handle;
+			}
+		public:
+			Cublas(Cublas const&) = delete;
+			void operator = (Cublas const&) = delete;
+		};
+
+		enum DeviceType
+		{
+			CPU, GPU
+		};
+
+		template<class T, DeviceType TDeviceType = CPU>
+		class Tensor : public TExp<Tensor<T, TDeviceType>>
 		{
 		protected:
 			T* mpData;
 			TensorParams mParams;
 			bool mReleaseData = true;
-
-		public:
-			static cublasHandle_t mCublasHandle;
 
 		public:
 			Tensor()
@@ -553,8 +569,11 @@ namespace EDX
 			Tensor& operator = (const Tensor& rhs)
 			{
 				Resize(rhs.Shape());
-				//Memory::Memcpy(mpData, rhs.mpData, LinearSize() * sizeof(T));
-				cudaMemcpy(mpData, rhs.mpData, LinearSize() * sizeof(T), cudaMemcpyDeviceToDevice);
+
+				if (TDeviceType == CPU)
+					Memory::Memcpy(mpData, rhs.mpData, LinearSize() * sizeof(T));
+				else if (TDeviceType == GPU)
+					cudaMemcpy(mpData, rhs.mpData, LinearSize() * sizeof(T), cudaMemcpyDeviceToDevice);
 
 				mReleaseData = rhs.mReleaseData;
 				return *this;
@@ -577,13 +596,15 @@ namespace EDX
 					Free();
 					Resize(1);
 				}
-				//*mpData = val;
-				cudaMemcpy(mpData, &val, sizeof(T), cudaMemcpyHostToDevice);
+				if (TDeviceType == CPU)
+					*mpData = val;
+				else if (TDeviceType == GPU)
+					cudaMemcpy(mpData, &val, sizeof(T), cudaMemcpyHostToDevice);
 				mReleaseData = true;
 				return *this;
 			}
 
-			const Tensor<T> Self() const
+			const Tensor<T, TDeviceType> Self() const
 			{
 				return GetWithShape(Shape());
 			}
@@ -599,14 +620,24 @@ namespace EDX
 			}
 
 			template<typename EType>
-			inline Tensor<T>& operator = (const TExp<EType>& rhs)
+			inline Tensor<T, TDeviceType>& operator = (const TExp<EType>& rhs)
 			{
 				const EType& src = rhs.Self();
 				Resize(src.Shape());
 
+				if (TDeviceType == CPU)
+				{
+					parallel_for(0u, (uint)LinearSize(), [&](int i)
+					{
+						mpData[i] = src.Eval(i, mParams);
+					});
+				}
+				else if (TDeviceType == GPU)
+				{
 #ifdef __CUDACC__
-				InvokeExecuteExpression(src, mpData, mParams);
+					InvokeExecuteExpression(src, mpData, mParams);
 #endif
+				}
 
 				return *this;
 			}
@@ -696,12 +727,19 @@ namespace EDX
 			void NestedInitializerListHelper(NestedInitializerList<T, level> initList)
 			{
 				Resize(DeriveShapeFromNestedInitList<TensorShape>(initList));
-				//InitListNestedCopy(Data(), initList);
-				T* pTempData = new T[LinearSize()];
-				T* pIter = pTempData;
-				InitListNestedCopy(pIter, initList);
 
-				cudaMemcpy(Data(), pTempData, LinearSize() * sizeof(T), cudaMemcpyHostToDevice);
+				if (TDeviceType == CPU)
+				{
+					InitListNestedCopy(Data(), initList);
+				}
+				else if (TDeviceType == GPU)
+				{
+					T* pTempData = new T[LinearSize()];
+					T* pIter = pTempData;
+					InitListNestedCopy(pIter, initList);
+
+					cudaMemcpy(Data(), pTempData, LinearSize() * sizeof(T), cudaMemcpyHostToDevice);
+				}
 			}
 
 			template<typename... TShape>
@@ -718,8 +756,10 @@ namespace EDX
 					Free();
 					mParams.Resize(shape);
 
-					//mpData = Memory::AlignedAlloc<T>(mParams.LinearSize());
-					cudaMalloc<T>(&mpData, mParams.LinearSize() * sizeof(T));
+					if (TDeviceType == CPU)
+						mpData = Memory::AlignedAlloc<T>(mParams.LinearSize());
+					else if (TDeviceType == GPU)
+						cudaMalloc<T>(&mpData, mParams.LinearSize() * sizeof(T));
 
 					Assert(mpData);
 
@@ -734,8 +774,11 @@ namespace EDX
 			void Assign(const T* pData, const TensorShape& shape)
 			{
 				Resize(shape);
-				//Memory::Memcpy(mpData, pData, LinearSize() * sizeof(T));
-				cudaMemcpy(mpData, pData, LinearSize() * sizeof(T));
+
+				if (TDeviceType == CPU)
+					Memory::Memcpy(mpData, pData, LinearSize() * sizeof(T));
+				else if (TDeviceType == GPU)
+					cudaMemcpy(mpData, pData, LinearSize() * sizeof(T));
 			}
 
 			void Assign(const T val, const TensorShape& shape)
@@ -903,10 +946,16 @@ namespace EDX
 
 			__forceinline void Clear()
 			{
-				//Memory::SafeClear(mpData, mParams.LinearSize());
+				if (TDeviceType == CPU)
+				{
+					Memory::SafeClear(mpData, mParams.LinearSize());
+				}
+				else if (TDeviceType == GPU)
+				{
+					if (mpData)
+						cudaMemset(mpData, 0, mParams.LinearSize() * sizeof(T));
+				}
 
-				if (mpData)
-					cudaMemset(mpData, 0, mParams.LinearSize() * sizeof(T));
 			}
 
 			template<typename... Index>
@@ -1006,9 +1055,15 @@ namespace EDX
 			{
 				if (mReleaseData)
 				{
-					//Memory::SafeFree(mpData);
-					if (mpData)
-						cudaFree(mpData);
+					if (TDeviceType == CPU)
+					{
+						Memory::SafeFree(mpData);
+					}
+					else if (TDeviceType == GPU)
+					{
+						if (mpData)
+							cudaFree(mpData);
+					}
 					mpData = nullptr;
 				}
 			}
@@ -1040,44 +1095,62 @@ namespace EDX
 			// ----------------------------------------------------------------
 			// Common utilities for tensors
 			// ----------------------------------------------------------------
-			static Tensor<T> LinSpace(const T& start, const T& stop, const int& numSamples)
+			static Tensor<T, TDeviceType> LinSpace(const T& start, const T& stop, const int& numSamples)
 			{
-				Array<T> arr;
-				arr.Resize(numSamples);
+				Tensor<T, TDeviceType> ret;
+				ret.Resize(numSamples);
 
 				T step = (stop - start) / T(numSamples - 1);
 
-				for (int i = 0; i < numSamples; i++)
-					arr[i] = start + i * step;
+				if (TDeviceType == CPU)
+				{
+					for (int i = 0; i < numSamples; i++)
+						ret[i] = start + i * step;
+				}
+				else if (TDeviceType == GPU)
+				{
+					Array<T> arr;
+					arr.Resize(numSamples);
 
-				Tensor<T> ret;
-				ret.Resize(numSamples);
-				cudaMemcpy(ret.Data(), arr.Data(), numSamples * sizeof(T), cudaMemcpyHostToDevice);
+					for (int i = 0; i < numSamples; i++)
+						arr[i] = start + i * step;
+
+					cudaMemcpy(ret.Data(), arr.Data(), numSamples * sizeof(T), cudaMemcpyHostToDevice);
+				}
 
 				return ret;
 			}
 
-			static Tensor<T> ArrayRange(const T& start, const T& stop, const T& step = 1)
+			static Tensor<T, TDeviceType> ArrayRange(const T& start, const T& stop, const T& step = 1)
 			{
-				Tensor<T> ret;
+				Tensor<T, TDeviceType> ret;
 
 				if (stop <= start)
 					return ret;
 
 				int numSamples = (stop - start) / step;
-				Array<T> arr;
-				arr.Resize(numSamples);
-
-				for (int i = 0; i < numSamples; i++)
-					arr[i] = start + i * step;
-
 				ret.Resize(numSamples);
-				cudaMemcpy(ret.Data(), arr.Data(), numSamples * sizeof(T), cudaMemcpyHostToDevice);
+
+				if (TDeviceType == CPU)
+				{
+					for (int i = 0; i < numSamples; i++)
+						ret[i] = start + i * step;
+				}
+				else if (TDeviceType == GPU)
+				{
+					Array<T> arr;
+					arr.Resize(numSamples);
+
+					for (int i = 0; i < numSamples; i++)
+						arr[i] = start + i * step;
+
+					cudaMemcpy(ret.Data(), arr.Data(), numSamples * sizeof(T), cudaMemcpyHostToDevice);
+				}
 
 				return ret;
 			}
 
-			static Tensor<T> ArrayRange(const T& stop)
+			static Tensor<T, TDeviceType> ArrayRange(const T& stop)
 			{
 				T start = 0;
 				return ArrayRange(0, stop, 1);
@@ -1096,28 +1169,39 @@ namespace EDX
 				return TConstantExp(1.0f, Forward<Shape>(shape)...);
 			}
 
-			static Tensor<T> Identity(const int N)
+			static Tensor<T, TDeviceType> Identity(const int N)
 			{
-				Tensor<T> ret;
+				Tensor<T, TDeviceType> ret;
 				ret.Resize(N, N);
 
-				for (int i = 0; i < N; i++)
+				if (TDeviceType == CPU)
 				{
-					ret(i, i) = T(1);
+					for (int i = 0; i < N; i++)
+						ret(i, i) = T(1);
+				}
+				else if (TDeviceType == GPU)
+				{
+					Array<T> arr;
+					arr.Resize(N * N);
+
+					for (int i = 0; i < N; i++)
+						arr[ret.LinearIndex(i, i)] = T(1);
+
+					cudaMemcpy(ret.Data(), arr.Data(), N * N * sizeof(T), cudaMemcpyHostToDevice);
 				}
 
 				return ret;
 			}
 
-			static Tensor<T> Normalize(const Tensor<T>& inTensor)
+			static Tensor<T, TDeviceType> Normalize(const Tensor<T, TDeviceType>& inTensor)
 			{
-				const Tensor<T> tensorSqr = inTensor * inTensor;
-				Tensor<T> denorm = Tensor<T>::Sqrt(Tensor<T>::Sum(tensorSqr));
+				const Tensor<T, TDeviceType> tensorSqr = inTensor * inTensor;
+				Tensor<T, TDeviceType> denorm = Tensor<T, TDeviceType>::Sqrt(Tensor<T, TDeviceType>::Sum(tensorSqr));
 
 				return inTensor / denorm;
 			}
 
-			static Tensor<T> Dot(const Tensor<T>& lhs, const Tensor<T>& rhs)
+			static Tensor<T, TDeviceType> Dot(const Tensor<T, TDeviceType>& lhs, const Tensor<T, TDeviceType>& rhs)
 			{
 				const TensorShape& leftShape = lhs.Shape();
 				const TensorShape& rightShape = rhs.Shape();
@@ -1127,7 +1211,7 @@ namespace EDX
 
 				Assertf(!(leftShape.Size() == 2 && leftShape[1] != rightShape[0]), "Dimension mismatch for tensor multiply.");
 
-				Tensor<T> ret;
+				Tensor<T, TDeviceType> ret;
 				ret.Resize(leftShape[0], rightShape[1]);
 
 				DotInplace(lhs, rhs, &ret);
@@ -1135,7 +1219,7 @@ namespace EDX
 				return ret;
 			}
 
-			static void DotInplace(const Tensor<T>& lhs, const Tensor<T>& rhs, Tensor<T>* pResult)
+			static void DotInplace(const Tensor<T, TDeviceType>& lhs, const Tensor<T, TDeviceType>& rhs, Tensor<T, TDeviceType>* pResult)
 			{
 				const TensorShape& leftShape = lhs.Shape();
 				const TensorShape& rightShape = rhs.Shape();
@@ -1145,48 +1229,53 @@ namespace EDX
 
 				Assertf(!(leftShape.Size() == 2 && leftShape[1] != rightShape[0]), "Dimension mismatch for tensor multiply.");
 
-				//cblas_sgemm(CblasRowMajor,
-				//	lhs.IsTransposed() ? CblasTrans : CblasNoTrans,
-				//	rhs.IsTransposed() ? CblasTrans : CblasNoTrans,
-				//	leftShape[0],
-				//	rightShape[1],
-				//	leftShape[1],
-				//	1.0f,
-				//	lhs.Data(),
-				//	lhs.IsTransposed() ? lhs.Shape(0) : lhs.Shape(1),
-				//	rhs.Data(),
-				//	rhs.IsTransposed() ? rhs.Shape(0) : rhs.Shape(1),
-				//	0.0f,
-				//	pResult->Data(),
-				//	pResult->Shape(1));
+				if (TDeviceType == CPU)
+				{
+					cblas_sgemm(CblasRowMajor,
+						lhs.IsTransposed() ? CblasTrans : CblasNoTrans,
+						rhs.IsTransposed() ? CblasTrans : CblasNoTrans,
+						leftShape[0],
+						rightShape[1],
+						leftShape[1],
+						1.0f,
+						lhs.Data(),
+						lhs.IsTransposed() ? lhs.Shape(0) : lhs.Shape(1),
+						rhs.Data(),
+						rhs.IsTransposed() ? rhs.Shape(0) : rhs.Shape(1),
+						0.0f,
+						pResult->Data(),
+						pResult->Shape(1));
+				}
+				else if (TDeviceType == GPU)
+				{
+					const float alpha = 1.0f;
+					const float beta = 0.0f;
 
-				const float alpha = 1.0f;
-				const float beta = 0.0f;
-
-				cublasSgemm(mCublasHandle,
-					rhs.IsTransposed() ? CUBLAS_OP_T : CUBLAS_OP_N,
-					lhs.IsTransposed() ? CUBLAS_OP_T : CUBLAS_OP_N,
-					rightShape[1],
-					leftShape[0],
-					leftShape[1],
-					&alpha,
-					rhs.Data(),
-					rhs.IsTransposed() ? rhs.Shape(0) : rhs.Shape(1),
-					lhs.Data(),
-					lhs.IsTransposed() ? lhs.Shape(0) : lhs.Shape(1),
-					&beta,
-					pResult->Data(),
-					pResult->Shape(1));
+					cublasSgemm(Cublas::GetHandle(),
+						rhs.IsTransposed() ? CUBLAS_OP_T : CUBLAS_OP_N,
+						lhs.IsTransposed() ? CUBLAS_OP_T : CUBLAS_OP_N,
+						rightShape[1],
+						leftShape[0],
+						leftShape[1],
+						&alpha,
+						rhs.Data(),
+						rhs.IsTransposed() ? rhs.Shape(0) : rhs.Shape(1),
+						lhs.Data(),
+						lhs.IsTransposed() ? lhs.Shape(0) : lhs.Shape(1),
+						&beta,
+						pResult->Data(),
+						pResult->Shape(1));
+				}
 			}
 			
-			static Tensor<T> Dot(const SparseMatrix<T>& lhs, const Tensor<T>& rhs)
+			static Tensor<T, TDeviceType> Dot(const SparseMatrix<T>& lhs, const Tensor<T, TDeviceType>& rhs)
 			{
 				const TensorShape& rightShape = rhs.Shape();
 
 				Assertf(rightShape.Size() <= 2, "Dot product only supports tensors less than 2 dimensions.");
 				Assertf(!(rightShape.Size() == 2 && lhs.n != rightShape[0]), "Dimension mismatch for tensor multiply.");
 
-				Tensor<T> ret;
+				Tensor<T, TDeviceType> ret;
 				ret.Resize(lhs.n, rightShape[1]);
 
 				DotInplace(lhs, rhs, &ret);
@@ -1194,24 +1283,31 @@ namespace EDX
 				return ret;
 			}
 
-			static void DotInplace(const SparseMatrix<T>& lhs, const Tensor<T>& rhs, Tensor<T>* pResult)
+			static void DotInplace(const SparseMatrix<T>& lhs, const Tensor<T, TDeviceType>& rhs, Tensor<T, TDeviceType>* pResult)
 			{
 				const TensorShape& rightShape = rhs.Shape();
 
 				Assertf(rightShape.Size() <= 2, "Dot product only supports tensors less than 2 dimensions.");
 				Assertf(!(rightShape.Size() == 2 && lhs.n != rightShape[0]), "Dimension mismatch for tensor multiply.");
 
-				parallel_for(0, (int)lhs.n, [&](int i)
+				if (TDeviceType == CPU)
 				{
-					pResult[i] = 0;
-					for (int j = lhs.rowstart[i]; j < lhs.rowstart[i + 1]; ++j)
+					parallel_for(0, (int)lhs.n, [&](int i)
 					{
-						pResult[i] += lhs.value[j] * rhs[lhs.colindex[j]];
-					}
-				});
+						pResult[i] = 0;
+						for (int j = lhs.rowstart[i]; j < lhs.rowstart[i + 1]; ++j)
+						{
+							pResult[i] += lhs.value[j] * rhs[lhs.colindex[j]];
+						}
+					});
+				}
+				else if (TDeviceType == GPU)
+				{
+					AssertNoEntry();
+				}
 			}
 
-			static Tensor<T> Transpose(const Tensor<T>& inTensor, const TensorShape& transposeDim = {})
+			static Tensor<T, TDeviceType> Transpose(const Tensor<T, TDeviceType>& inTensor, const TensorShape& transposeDim = {})
 			{
 				const TensorShape& inShape = inTensor.Shape();
 
@@ -1228,63 +1324,81 @@ namespace EDX
 					}
 				}
 
-				Tensor<T> ret;
+				Tensor<T, TDeviceType> ret;
 				ret.Resize(transposedShape);
 
 				TensorShape index;
 				index.ResizeZeroed(inTensor.Dim());
-				for (int i = 0; i < inTensor.LinearSize(); i++, inTensor.IterateIndex(index))
+
+				if (TDeviceType == CPU)
 				{
-					TensorShape transposedIndex = index;
+					for (int i = 0; i < inTensor.LinearSize(); i++, inTensor.IterateIndex(index))
+					{
+						TensorShape transposedIndex = index;
 
-					if (transposeDim.Empty())
-					{
-						Algorithm::Reverse(transposedIndex);
-					}
-					else
-					{
-						for (int i = 0; i < transposeDim.Size(); i++)
+						if (transposeDim.Empty())
 						{
-							transposedIndex[i] = index[transposeDim[i]];
+							Algorithm::Reverse(transposedIndex);
 						}
-					}
+						else
+						{
+							for (int j = 0; j < transposeDim.Size(); j++)
+							{
+								transposedIndex[j] = index[transposeDim[j]];
+							}
+						}
 
-					ret(transposedIndex) = inTensor(index);
+						ret(transposedIndex) = inTensor(index);
+					}
+				}
+				else if (TDeviceType == GPU)
+				{
+					// TODO: Add CUDA kernel for matrix transpose
+					AssertNoEntry();
 				}
 
 				return ret;
 			}
 
-			static Tensor<T> Inverse(const Tensor<T>& inTensor)
+			static Tensor<T, TDeviceType> Inverse(const Tensor<T, TDeviceType>& inTensor)
 			{
 				Assertf(inTensor.Dim() == 2 && inTensor.Shape(0) == inTensor.Shape(1),
 					"Matrix inversion dimension mismatch.");
 
 				const int N = inTensor.Shape(0);
 
-				Tensor<T> ret = inTensor;
-				float* A = ret.Data();
+				Tensor<T, TDeviceType> ret = inTensor;
 
-				int* ipiv = new int[N + 1];
+				if (TDeviceType == CPU)
+				{
+					float* A = ret.Data();
 
-				lapack_int code;
-				code = LAPACKE_sgetrf(LAPACK_ROW_MAJOR,
-					N,
-					N,
-					A,
-					N,
-					ipiv);
+					int* ipiv = new int[N + 1];
 
-				if (code != 0)
-					return ret;
+					lapack_int code;
+					code = LAPACKE_sgetrf(LAPACK_ROW_MAJOR,
+						N,
+						N,
+						A,
+						N,
+						ipiv);
 
-				code = LAPACKE_sgetri(LAPACK_ROW_MAJOR,
-					N,
-					A,
-					N,
-					ipiv);
+					if (code != 0)
+						return ret;
 
-				delete[] ipiv;
+					code = LAPACKE_sgetri(LAPACK_ROW_MAJOR,
+						N,
+						A,
+						N,
+						ipiv);
+
+					delete[] ipiv;
+				}
+				else if (TDeviceType == GPU)
+				{
+					// TODO: Add CUDA kernel for matrix inversion
+					AssertNoEntry();
+				}
 
 				return ret;
 			}
@@ -1326,24 +1440,24 @@ namespace EDX
 				return ReluActivateExp(param);
 			}
 
-			static Tensor<T> Sum(const Tensor<T>& inTensor, const TensorShape& axises = { -1 }, const bool keepDim = false)
+			static Tensor<T, TDeviceType> Sum(const Tensor<T, TDeviceType>& inTensor, const TensorShape& axises = { -1 }, const bool keepDim = false)
 			{
 				return ProjectionOp(inTensor, axises, keepDim, Algorithm::Plus<T>(), T(0));
 			}
 
-			static Tensor<T> Product(const Tensor<T>& inTensor, const TensorShape& axises = { -1 })
+			static Tensor<T, TDeviceType> Product(const Tensor<T, TDeviceType>& inTensor, const TensorShape& axises = { -1 })
 			{
 				return ProjectionOp(inTensor, axises, keepDim, Algorithm::Multiply<>(), T(1));
 			}
 
-			static Tensor<T> Max(const Tensor<T>& inTensor, const TensorShape& axises = { -1 }, const bool keepDim = false)
+			static Tensor<T, TDeviceType> Max(const Tensor<T, TDeviceType>& inTensor, const TensorShape& axises = { -1 }, const bool keepDim = false)
 			{
 				return ProjectionOp(inTensor, axises, keepDim, Algorithm::Max<>(), T(Math::EDX_NEG_INFINITY));
 			}
 
-			static Tensor<T> Mean(const Tensor<T>& X, const TensorShape& axises = { -1 }, const bool keepDim = false)
+			static Tensor<T, TDeviceType> Mean(const Tensor<T, TDeviceType>& X, const TensorShape& axises = { -1 }, const bool keepDim = false)
 			{
-				Tensor<T> ret = Sum(X, axises);
+				Tensor<T, TDeviceType> ret = Sum(X, axises);
 
 				float invDivisor = ret.LinearSize() / float(X.LinearSize());
 				ret *= invDivisor;
@@ -1351,20 +1465,20 @@ namespace EDX
 				return ret;
 			}
 
-			static Tensor<T> StandardDeviation(const Tensor<T>& X, const TensorShape& axises = { -1 }, const bool keepDim = false)
+			static Tensor<T, TDeviceType> StandardDeviation(const Tensor<T, TDeviceType>& X, const TensorShape& axises = { -1 }, const bool keepDim = false)
 			{
-				Tensor<T> mean = Mean(X, axises, keepDim);
-				Tensor<T> centeredX = X - mean;
+				Tensor<T, TDeviceType> mean = Mean(X, axises, keepDim);
+				Tensor<T, TDeviceType> centeredX = X - mean;
 
-				Tensor<T> variance = Tensorf::Mean(centeredX * centeredX, axises, keepDim);
+				Tensor<T, TDeviceType> variance = Tensorf::Mean(centeredX * centeredX, axises, keepDim);
 
 				return Sqrt(variance + Scalar(1e-5f));
 			}
 
 			template<typename... Shape>
-			static Tensor<T> RandomInt(const int high, Shape... shape)
+			static Tensor<T, TDeviceType> RandomInt(const int high, Shape... shape)
 			{
-				Tensor<T> ret;
+				Tensor<T, TDeviceType> ret;
 				ret.Resize(shape...);
 
 				RandomGen random;
@@ -1377,9 +1491,9 @@ namespace EDX
 			}
 
 			template<typename... Shape>
-			static Tensor<T> RandomFloat(Shape... shape)
+			static Tensor<T, TDeviceType> RandomFloat(Shape... shape)
 			{
-				Tensor<T> ret;
+				Tensor<T, TDeviceType> ret;
 				ret.Resize(shape...);
 
 				RandomGen random;
@@ -1392,9 +1506,9 @@ namespace EDX
 			}
 
 			template<typename... Shape>
-			static Tensor<T> RandomNormalDistribution(const float std, Shape... shape)
+			static Tensor<T, TDeviceType> RandomNormalDistribution(const float std, Shape... shape)
 			{
-				Tensor<T> ret;
+				Tensor<T, TDeviceType> ret;
 				ret.Resize(shape...);
 
 				RandomGen random;
@@ -1406,67 +1520,67 @@ namespace EDX
 				return ret;
 			}
 
-			void operator += (const Tensor<T>& rhs)
+			void operator += (const Tensor<T, TDeviceType>& rhs)
 			{
 				ElementWiseBinaryOpInplace(*this, rhs, Algorithm::Plus<>());
 			}
-			void operator -= (const Tensor<T>& rhs)
+			void operator -= (const Tensor<T, TDeviceType>& rhs)
 			{
 				ElementWiseBinaryOpInplace(*this, rhs, Algorithm::Substract<>());
 			}
 
-			void operator *= (const Tensor<T>& rhs)
+			void operator *= (const Tensor<T, TDeviceType>& rhs)
 			{
 				ElementWiseBinaryOpInplace(*this, rhs, Algorithm::Multiply<>());
 			}
-			void operator /= (const Tensor<T>& rhs)
+			void operator /= (const Tensor<T, TDeviceType>& rhs)
 			{
 				ElementWiseBinaryOpInplace(*this, rhs, Algorithm::Divide<>());
 			}
 
 		private:
 
+			//template<typename Op>
+			//static Tensor<T, TDeviceType> ElementWiseBinaryOp(const Tensor<T, TDeviceType>& lhs, const Tensor<T, TDeviceType>& rhs, Op op)
+			//{
+			//	Tensor<T, TDeviceType> ret;
+
+			//	ret.Resize(BroadcastShape(lhs.Shape(), rhs.Shape()));
+
+			//	//StaticArray<int, 4> index;
+			//	//index.ResizeZeroed(ret.Dim());
+			//	//for (int i = 0; i < ret.LinearSize(); i++, ret.IterateIndex(index))
+			//	parallel_for(0u, (uint)ret.LinearSize(), [&](int i)
+			//	{
+			//		TensorShape leftIndex;
+			//		leftIndex.Resize(lhs.Dim());
+
+			//		TensorShape rightIndex;
+			//		rightIndex.Resize(rhs.Dim());
+
+			//		TensorShape index = ret.Index(i);
+			//		for (int j = 0; j < lhs.Dim(); j++)
+			//		{
+			//			leftIndex[j] = index[j + ret.Dim() - lhs.Dim()];
+			//			if (leftIndex[j] >= lhs.Shape(j))
+			//				leftIndex[j] = 0;
+			//		}
+
+			//		for (int j = 0; j < rhs.Dim(); j++)
+			//		{
+			//			rightIndex[j] = index[j + ret.Dim() - rhs.Dim()];
+			//			if (rightIndex[j] >= rhs.Shape(j))
+			//				rightIndex[j] = 0;
+			//		}
+
+			//		ret[i] = op(lhs(leftIndex), rhs(rightIndex));
+			//	});
+
+			//	return ret;
+			//}
+
 			template<typename Op>
-			static Tensor<T> ElementWiseBinaryOp(const Tensor<T>& lhs, const Tensor<T>& rhs, Op op)
-			{
-				Tensor<T> ret;
-
-				ret.Resize(BroadcastShape(lhs.Shape(), rhs.Shape()));
-
-				//StaticArray<int, 4> index;
-				//index.ResizeZeroed(ret.Dim());
-				//for (int i = 0; i < ret.LinearSize(); i++, ret.IterateIndex(index))
-				parallel_for(0u, (uint)ret.LinearSize(), [&](int i)
-				{
-					TensorShape leftIndex;
-					leftIndex.Resize(lhs.Dim());
-
-					TensorShape rightIndex;
-					rightIndex.Resize(rhs.Dim());
-
-					TensorShape index = ret.Index(i);
-					for (int j = 0; j < lhs.Dim(); j++)
-					{
-						leftIndex[j] = index[j + ret.Dim() - lhs.Dim()];
-						if (leftIndex[j] >= lhs.Shape(j))
-							leftIndex[j] = 0;
-					}
-
-					for (int j = 0; j < rhs.Dim(); j++)
-					{
-						rightIndex[j] = index[j + ret.Dim() - rhs.Dim()];
-						if (rightIndex[j] >= rhs.Shape(j))
-							rightIndex[j] = 0;
-					}
-
-					ret[i] = op(lhs(leftIndex), rhs(rightIndex));
-				});
-
-				return ret;
-			}
-
-			template<typename Op>
-			static void ElementWiseBinaryOpInplace(Tensor<T>& lhs, const Tensor<T>& rhs, Op op)
+			static void ElementWiseBinaryOpInplace(Tensor<T, TDeviceType>& lhs, const Tensor<T, TDeviceType>& rhs, Op op)
 			{
 				auto newShape = BroadcastShape(lhs.Shape(), rhs.Shape());
 				if (newShape != lhs.Shape())
@@ -1474,64 +1588,77 @@ namespace EDX
 					lhs.Resize(newShape);
 				}
 
-#ifdef __CUDACC__
-				InvokeElementWiseBinaryOpInplace(lhs, rhs, op);
-#endif
-
-				//parallel_for(0u, (uint)lhs.LinearSize(), [&](int i)
-				//{
-				//	TensorShape leftIndex;
-				//	leftIndex.Resize(lhs.Dim());
-
-				//	TensorShape rightIndex;
-				//	rightIndex.Resize(rhs.Dim());
-
-				//	TensorShape index = lhs.Index(i);
-				//	for (int j = 0; j < lhs.Dim(); j++)
-				//	{
-				//		leftIndex[j] = index[j + lhs.Dim() - lhs.Dim()];
-				//		if (leftIndex[j] >= lhs.Shape(j))
-				//			leftIndex[j] = 0;
-				//	}
-
-				//	for (int j = 0; j < rhs.Dim(); j++)
-				//	{
-				//		rightIndex[j] = index[j + lhs.Dim() - rhs.Dim()];
-				//		if (rightIndex[j] >= rhs.Shape(j))
-				//			rightIndex[j] = 0;
-				//	}
-
-				//	lhs[i] = op(lhs(leftIndex), rhs(rightIndex));
-				//});
-			}
-
-			template<typename Op>
-			static Tensor<T> ElementWiseUnaryOp(const Tensor<T>& lhs, Op op)
-			{
-				Tensor<T> ret;
-
-				ret.Resize(lhs.Shape());
-				for (int i = 0; i < ret.LinearSize(); i++)
+				if (TDeviceType == CPU)
 				{
-					ret[i] = op(lhs[i]);
-				}
+					parallel_for(0u, (uint)lhs.LinearSize(), [&](int i)
+					{
+						TensorShape leftIndex;
+						leftIndex.Resize(lhs.Dim());
 
-				return ret;
+						TensorShape rightIndex;
+						rightIndex.Resize(rhs.Dim());
+
+						TensorShape index = lhs.Index(i);
+						for (int j = 0; j < lhs.Dim(); j++)
+						{
+							leftIndex[j] = index[j + lhs.Dim() - lhs.Dim()];
+							if (leftIndex[j] >= lhs.Shape(j))
+								leftIndex[j] = 0;
+						}
+
+						for (int j = 0; j < rhs.Dim(); j++)
+						{
+							rightIndex[j] = index[j + lhs.Dim() - rhs.Dim()];
+							if (rightIndex[j] >= rhs.Shape(j))
+								rightIndex[j] = 0;
+						}
+
+						lhs[i] = op(lhs(leftIndex), rhs(rightIndex));
+					});
+				}
+				else if (TDeviceType == GPU)
+				{
+#ifdef __CUDACC__
+					InvokeElementWiseBinaryOpInplace(lhs, rhs, op);
+#endif
+				}
 			}
 
+			//template<typename Op>
+			//static Tensor<T, TDeviceType> ElementWiseUnaryOp(const Tensor<T, TDeviceType>& lhs, Op op)
+			//{
+			//	Tensor<T, TDeviceType> ret;
+
+			//	ret.Resize(lhs.Shape());
+			//	for (int i = 0; i < ret.LinearSize(); i++)
+			//	{
+			//		ret[i] = op(lhs[i]);
+			//	}
+
+			//	return ret;
+			//}
+
 			template<typename Op>
-			static Tensor<T> ProjectionOp(const Tensor<T>& lhs, const TensorShape& axises, const bool keepDim, Op op, T initVal)
+			static Tensor<T, TDeviceType> ProjectionOp(const Tensor<T, TDeviceType>& lhs, const TensorShape& axises, const bool keepDim, Op op, T initVal)
 			{
 				if (axises.Size() == 1 && axises[0] == -1)
 				{
+					if (TDeviceType == CPU)
+					{
+						return Algorithm::Accumulate(lhs, initVal, op);
+					}
+					else if (TDeviceType == GPU)
+					{
 #ifdef __CUDACC__
-					T* reduced = InvokeReduce(lhs.Data(), lhs.LinearSize(), initVal, op);
-					Tensor<T> ret;
-					ret.MoveDevicePtr(reduced, { 1 });
-					return ret;
+						T* reduced = InvokeReduce(lhs.Data(), lhs.LinearSize(), initVal, op);
+						Tensor<T, TDeviceType> ret;
+						ret.MoveDevicePtr(reduced, { 1 });
+						return ret;
 #else
-					return Algorithm::Accumulate(lhs, initVal, op);
+						AssertNoEntry();
+						return 0.0f;
 #endif
+					}
 				}
 
 				const TensorShape& inShape = lhs.Shape();
@@ -1567,24 +1694,29 @@ namespace EDX
 				TensorParams tensorParamsKeepDim;
 				tensorParamsKeepDim.Resize(projShapeKeepDim);
 
-				Tensor<T> ret;
+				Tensor<T, TDeviceType> ret;
+				if (TDeviceType == CPU)
+				{
+					ret.Assign(initVal, TensorShape(projShape));
+
+					parallel_for(0, (int)tensorParamsKeepDim.LinearSize(), [&](int i)
+					{
+						TensorShape projIndex = tensorParamsKeepDim.Index(i);
+
+						do
+						{
+							ret[i] = op(ret[i], lhs(projIndex));
+						}
+						while (lhs.IterateIndex(projIndex, axises));
+					});
+				}
+				else if (TDeviceType == GPU)
+				{
+					ret.Resize(projShape);
 #ifdef __CUDACC__
-				ret.Resize(projShape);
-				InvokeTensorProjectionOp(ret, lhs, tensorParamsKeepDim, axises, op, initVal);
+					InvokeTensorProjectionOp(ret, lhs, tensorParamsKeepDim, axises, op, initVal);
 #endif
-
-				//ret.Assign(initVal, TensorShape(projShape));
-
-				//parallel_for(0, (int)tensorParamsKeepDim.LinearSize(), [&](int i)
-				//{
-				//	TensorShape projIndex = tensorParamsKeepDim.Index(i);
-
-				//	do
-				//	{
-				//		ret[i] = op(ret[i], lhs(projIndex));
-				//	}
-				//	while (lhs.IterateIndex(projIndex, axises));
-				//});
+				}
 
 				return ret;
 			}
@@ -1595,10 +1727,10 @@ namespace EDX
 			// DO NOT USE DIRECTLY
 			// STL-like iterators to enable range-based for loop support.
 			// --------------------------------------------------------------------------------------------
-			__forceinline friend		T*	begin(Tensor<T>& tensor) { return tensor.Data(); }
-			__forceinline friend const	T*	begin(const Tensor<T>& tensor) { return tensor.Data(); }
-			__forceinline friend		T*	end(Tensor<T>& tensor) { return tensor.Data() + tensor.LinearSize(); }
-			__forceinline friend const	T*	end(const Tensor<T>& tensor) { return tensor.Data() + tensor.LinearSize(); }
+			__forceinline friend		T*	begin(Tensor<T, TDeviceType>& tensor) { return tensor.Data(); }
+			__forceinline friend const	T*	begin(const Tensor<T, TDeviceType>& tensor) { return tensor.Data(); }
+			__forceinline friend		T*	end(Tensor<T, TDeviceType>& tensor) { return tensor.Data() + tensor.LinearSize(); }
+			__forceinline friend const	T*	end(const Tensor<T, TDeviceType>& tensor) { return tensor.Data() + tensor.LinearSize(); }
 		};
 
 		using Tensorf = Tensor<float>;
