@@ -375,13 +375,15 @@ namespace EDX
 
 					if (index[i] < mShape[i])
 					{
-						if (i == axises[0])
-							return false;
-
 						break;
 					}
 					else
+					{
+						if (i == axises[0])
+							return false;
+
 						index[i] = 0;
+					}
 				}
 
 				return true;
