@@ -52,9 +52,9 @@ namespace EDX
 		{
 		public:
 			Pooling(Symbol* pInput,
-				const Array<int>& kernelSize,
-				const Array<int>& stride,
-				const Array<int>& padding)
+				const TensorShape& kernelSize,
+				const TensorShape& stride,
+				const TensorShape& padding)
 				: mKernelSize(kernelSize)
 				, mStride(stride)
 				, mPadding(padding)
@@ -122,9 +122,9 @@ namespace EDX
 			Symbol* Gradient(Symbol* pUpperGrads) const override;
 
 		private:
-			Array<int> InferShape() const
+			TensorShape InferShape() const
 			{
-				Array<int> ret;
+				TensorShape ret;
 
 				const auto& inputShape = mInputs[0]->GetOutput().Shape();
 				ret = inputShape;
@@ -136,9 +136,9 @@ namespace EDX
 			}
 
 		private:
-			Array<int> mKernelSize;
-			Array<int> mStride;
-			Array<int> mPadding;
+			TensorShape mKernelSize;
+			TensorShape mStride;
+			TensorShape mPadding;
 		};
 
 		struct MaxPoolGradOp
@@ -172,9 +172,9 @@ namespace EDX
 			PoolingGradient(Symbol* pInput,
 				Symbol* pPooledOutput,
 				Symbol* pUpperGradients,
-				const Array<int>& kernelSize,
-				const Array<int>& stride,
-				const Array<int>& padding)
+				const TensorShape& kernelSize,
+				const TensorShape& stride,
+				const TensorShape& padding)
 				: mKernelSize(kernelSize)
 				, mStride(stride)
 				, mPadding(padding)
@@ -247,9 +247,9 @@ namespace EDX
 			}
 
 		private:
-			Array<int> InferShape() const
+			TensorShape InferShape() const
 			{
-				Array<int> ret;
+				TensorShape ret;
 
 				const Tensorf& inputValue = mInputs[0]->GetOutput();
 				const auto inputShape = inputValue.Shape();
@@ -262,9 +262,9 @@ namespace EDX
 			}
 
 		private:
-			Array<int> mKernelSize;
-			Array<int> mStride;
-			Array<int> mPadding;
+			TensorShape mKernelSize;
+			TensorShape mStride;
+			TensorShape mPadding;
 		};
 
 

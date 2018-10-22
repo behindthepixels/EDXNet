@@ -3,12 +3,12 @@
   
   <!-- Tensor visualizer -->
   <Type Name="EDX::DeepLearning::Tensor&lt;*&gt;">
-    <DisplayString Condition="mIndex.mLinearSize == 0">Empty</DisplayString>
-    <DisplayString Condition="mIndex.mLinearSize &lt; 0">Invalid</DisplayString>
-    <DisplayString Condition="mIndex.mLinearSize &gt;= 0">Size={mIndex.mLinearSize}</DisplayString>
+    <DisplayString Condition="mParams.mLinearSize == 0">Empty</DisplayString>
+    <DisplayString Condition="mParams.mLinearSize &lt; 0">Invalid</DisplayString>
+    <DisplayString Condition="mParams.mLinearSize &gt;= 0">Size={mParams.mLinearSize}</DisplayString>
     <Expand>
-      <ArrayItems Condition="mIndex.mLinearSize &gt;= 0">
-        <Size>mIndex.mLinearSize</Size>
+      <ArrayItems Condition="mParams.mLinearSize &gt;= 0">
+        <Size>mParams.mLinearSize</Size>
         <ValuePointer>($T1*)mpData</ValuePointer>
       </ArrayItems>
     </Expand>

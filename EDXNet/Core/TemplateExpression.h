@@ -6,7 +6,7 @@
 template<typename ExpType>
 struct TExp
 {
-	inline const ExpType& Self() const
+	__forceinline const ExpType& Self() const
 	{
 		return *static_cast<const ExpType*>(this);
 	}
@@ -15,7 +15,7 @@ struct TExp
 template<typename T>
 struct TScalarExp : public TExp<TScalarExp<T>>
 {
-	const T& val;
+	const T val;
 
 	TScalarExp(const T& _val)
 		: val(_val)
@@ -23,12 +23,12 @@ struct TScalarExp : public TExp<TScalarExp<T>>
 	}
 
 	// evaluation function, evaluate this expression at position i
-	__forceinline float Eval(const int i, const TensorIndex& broadcastIndex) const
+	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
 	{
 		return val;
 	}
 
-	__forceinline Array<int> Shape() const
+	__forceinline TensorShape Shape() const
 	{
 		return{ 1 };
 	}
@@ -44,22 +44,22 @@ TScalarExp<T> Scalar(const T& val)
 template<typename TOp, typename TLhs, typename TRhs>
 struct TBinaryExp : public TExp<TBinaryExp<TOp, TLhs, TRhs>>
 {
-	const TLhs& lhs;
-	const TRhs& rhs;
+	const TLhs lhs;
+	const TRhs rhs;
 
 	TBinaryExp(const TLhs& _lhs, const TRhs& _rhs)
-		: lhs(_lhs)
-		, rhs(_rhs)
+		: lhs(_lhs.Self())
+		, rhs(_rhs.Self())
 	{
 	}
 
 	// evaluation function, evaluate this expression at position i
-	__forceinline float Eval(const int i, const TensorIndex& broadcastIndex) const
+	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
 	{
 		return TOp::Exec(lhs.Eval(i, broadcastIndex), rhs.Eval(i, broadcastIndex));
 	}
 
-	__forceinline Array<int> Shape() const
+	__forceinline TensorShape Shape() const
 	{
 		return BroadcastShape(lhs.Shape(), rhs.Shape());
 	}
@@ -67,7 +67,7 @@ struct TBinaryExp : public TExp<TBinaryExp<TOp, TLhs, TRhs>>
 
 struct AddOp
 {
-	inline static float Exec(float a, float b)
+	TENSOR_INLINE static float Exec(float a, float b)
 	{
 		return a + b;
 	}
@@ -75,7 +75,7 @@ struct AddOp
 
 struct MinusOp
 {
-	inline static float Exec(float a, float b)
+	TENSOR_INLINE static float Exec(float a, float b)
 	{
 		return a - b;
 	}
@@ -83,7 +83,7 @@ struct MinusOp
 
 struct MulOp
 {
-	inline static float Exec(float a, float b)
+	TENSOR_INLINE static float Exec(float a, float b)
 	{
 		return a * b;
 	}
@@ -91,7 +91,7 @@ struct MulOp
 
 struct DivOp
 {
-	inline static float Exec(float a, float b)
+	TENSOR_INLINE static float Exec(float a, float b)
 	{
 		return a / b;
 	}
@@ -131,7 +131,7 @@ inline TBinaryExp<DivOp, TLhs, TRhs> operator / (const TExp<TLhs>& lhs, const TE
 template<typename TOp, typename TParam>
 struct TUnaryExp : public TExp<TUnaryExp<TOp, TParam>>
 {
-	const TParam& param;
+	const TParam param;
 
 	TUnaryExp(const TParam& _param)
 		: param(_param)
@@ -139,12 +139,12 @@ struct TUnaryExp : public TExp<TUnaryExp<TOp, TParam>>
 	}
 
 	// evaluation function, evaluate this expression at position i
-	__forceinline float Eval(const int i, const TensorIndex& broadcastIndex) const
+	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
 	{
 		return TOp::Exec(param.Eval(i, broadcastIndex));
 	}
 
-	__forceinline Array<int> Shape() const
+	__forceinline TensorShape Shape() const
 	{
 		return param.Shape();
 	}
@@ -159,7 +159,7 @@ inline TUnaryExp<TOp, TParam> ElementWiseUnaryOpExpression(const TExp<TParam>& p
 
 struct ExpOp
 {
-	inline static float Exec(float val)
+	TENSOR_INLINE static float Exec(float val)
 	{
 		return Math::Exp(val);
 	}
@@ -167,7 +167,7 @@ struct ExpOp
 
 struct SqrtOp
 {
-	inline static float Exec(float val)
+	TENSOR_INLINE static float Exec(float val)
 	{
 		return Math::Sqrt(val);
 	}
@@ -175,7 +175,7 @@ struct SqrtOp
 
 struct SquareOp
 {
-	inline static float Exec(float val)
+	TENSOR_INLINE static float Exec(float val)
 	{
 		return Math::Square(val);
 	}
@@ -183,7 +183,7 @@ struct SquareOp
 
 struct LogOp
 {
-	inline static float Exec(float val)
+	TENSOR_INLINE static float Exec(float val)
 	{
 		return Math::Log(val);
 	}
@@ -191,7 +191,7 @@ struct LogOp
 
 struct ReluOp
 {
-	inline static float Exec(float val)
+	TENSOR_INLINE static float Exec(float val)
 	{
 		return val > 0.0f ? val : 0.0f;
 	}
@@ -199,7 +199,7 @@ struct ReluOp
 
 struct AbsOp
 {
-	inline static float Exec(float val)
+	TENSOR_INLINE static float Exec(float val)
 	{
 		return Math::Abs(val);
 	}
@@ -245,9 +245,9 @@ inline TUnaryExp<ReluOp, TParam> ReluActivateExp(const TExp<TParam>& param)
 struct TConstantExp : public TExp<TConstantExp>
 {
 	float val;
-	Array<int> shape;
+	TensorShape shape;
 
-	TConstantExp(const float _val, const Array<int>& _shape)
+	TConstantExp(const float _val, const TensorShape& _shape)
 		: val(_val)
 		, shape(_shape)
 	{
@@ -255,17 +255,17 @@ struct TConstantExp : public TExp<TConstantExp>
 
 	template<typename... TShape>
 	TConstantExp(const float _val, TShape... shape)
-		:TConstantExp(_val, { shape... })
+		: TConstantExp(_val, { shape... })
 	{
 	}
 
 	// evaluation function, evaluate this expression at position i
-	__forceinline float Eval(const int i, const TensorIndex& broadcastIndex) const
+	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
 	{
 		return val;
 	}
 
-	__forceinline Array<int> Shape() const
+	__forceinline TensorShape Shape() const
 	{
 		return shape;
 	}
