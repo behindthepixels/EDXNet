@@ -1484,9 +1484,23 @@ namespace EDX
 				ret.Resize(shape...);
 
 				RandomGen random;
-				for (auto& it : ret)
+				if (TDeviceType == CPU)
 				{
-					it = random.UnsignedInt() % high;
+					for (auto& it : ret)
+					{
+						it = random.UnsignedInt() % high;
+					}
+				}
+				else if (TDeviceType == GPU)
+				{
+					Array<T> arr;
+					arr.Resize(ret.LinearSize());
+					for (auto& it : arr)
+					{
+						it = random.UnsignedInt() % high;
+					}
+
+					cudaMemcpy(ret.Data(), arr.Data(), ret.LinearSize() * sizeof(T), cudaMemcpyHostToDevice);
 				}
 
 				return ret;
@@ -1499,9 +1513,23 @@ namespace EDX
 				ret.Resize(shape...);
 
 				RandomGen random;
-				for (auto& it : ret)
+				if (TDeviceType == CPU)
 				{
-					it = random.Float();
+					for (auto& it : ret)
+					{
+						it = random.Float();
+					}
+				}
+				else if (TDeviceType == GPU)
+				{
+					Array<T> arr;
+					arr.Resize(ret.LinearSize());
+					for (auto& it : arr)
+					{
+						it = random.Float();
+					}
+
+					cudaMemcpy(ret.Data(), arr.Data(), ret.LinearSize() * sizeof(T), cudaMemcpyHostToDevice);
 				}
 
 				return ret;
@@ -1514,9 +1542,24 @@ namespace EDX
 				ret.Resize(shape...);
 
 				RandomGen random;
-				for (auto& it : ret)
+
+				if (TDeviceType == CPU)
 				{
-					it = random.GaussFloat(0.0f, std);
+					for (auto& it : ret)
+					{
+						it = random.GaussFloat(0.0f, std);
+					}
+				}
+				else if(TDeviceType == GPU)
+				{
+					Array<T> arr;
+					arr.Resize(ret.LinearSize());
+					for (auto& it : arr)
+					{
+						it = random.GaussFloat(0.0f, std);
+					}
+
+					cudaMemcpy(ret.Data(), arr.Data(), ret.LinearSize() * sizeof(T), cudaMemcpyHostToDevice);
 				}
 
 				return ret;
@@ -1541,45 +1584,6 @@ namespace EDX
 			}
 
 		private:
-
-			//template<typename Op>
-			//static Tensor<T, TDeviceType> ElementWiseBinaryOp(const Tensor<T, TDeviceType>& lhs, const Tensor<T, TDeviceType>& rhs, Op op)
-			//{
-			//	Tensor<T, TDeviceType> ret;
-
-			//	ret.Resize(BroadcastShape(lhs.Shape(), rhs.Shape()));
-
-			//	//StaticArray<int, 4> index;
-			//	//index.ResizeZeroed(ret.Dim());
-			//	//for (int i = 0; i < ret.LinearSize(); i++, ret.IterateIndex(index))
-			//	parallel_for(0u, (uint)ret.LinearSize(), [&](int i)
-			//	{
-			//		TensorShape leftIndex;
-			//		leftIndex.Resize(lhs.Dim());
-
-			//		TensorShape rightIndex;
-			//		rightIndex.Resize(rhs.Dim());
-
-			//		TensorShape index = ret.Index(i);
-			//		for (int j = 0; j < lhs.Dim(); j++)
-			//		{
-			//			leftIndex[j] = index[j + ret.Dim() - lhs.Dim()];
-			//			if (leftIndex[j] >= lhs.Shape(j))
-			//				leftIndex[j] = 0;
-			//		}
-
-			//		for (int j = 0; j < rhs.Dim(); j++)
-			//		{
-			//			rightIndex[j] = index[j + ret.Dim() - rhs.Dim()];
-			//			if (rightIndex[j] >= rhs.Shape(j))
-			//				rightIndex[j] = 0;
-			//		}
-
-			//		ret[i] = op(lhs(leftIndex), rhs(rightIndex));
-			//	});
-
-			//	return ret;
-			//}
 
 			template<typename Op>
 			static void ElementWiseBinaryOpInplace(Tensor<T, TDeviceType>& lhs, const Tensor<T, TDeviceType>& rhs, Op op)
@@ -1625,20 +1629,6 @@ namespace EDX
 #endif
 				}
 			}
-
-			//template<typename Op>
-			//static Tensor<T, TDeviceType> ElementWiseUnaryOp(const Tensor<T, TDeviceType>& lhs, Op op)
-			//{
-			//	Tensor<T, TDeviceType> ret;
-
-			//	ret.Resize(lhs.Shape());
-			//	for (int i = 0; i < ret.LinearSize(); i++)
-			//	{
-			//		ret[i] = op(lhs[i]);
-			//	}
-
-			//	return ret;
-			//}
 
 			template<typename Op>
 			static Tensor<T, TDeviceType> ProjectionOp(const Tensor<T, TDeviceType>& lhs, const TensorShape& axises, const bool keepDim, Op op, T initVal)
