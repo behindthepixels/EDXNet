@@ -161,4 +161,9 @@
       <Filter>Source Files</Filter>
     </Natvis>
   </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="Operators\FullyConnected.cu">
+      <Filter>Source Files\Operators</Filter>
+    </CudaCompile>
+  </ItemGroup>
 </Project>

@@ -530,7 +530,7 @@ namespace EDX
 			CPU, GPU
 		};
 
-		template<class T, DeviceType TDeviceType = CPU>
+		template<class T, DeviceType TDeviceType = GPU>
 		class Tensor : public TExp<Tensor<T, TDeviceType>>
 		{
 		protected:

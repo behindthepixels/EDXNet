@@ -68,6 +68,9 @@
       <SubType>Designer</SubType>
     </Natvis>
   </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="Operators\FullyConnected.cu" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{A71B6E17-EABD-4259-8F72-B5222FB6FF1C}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
