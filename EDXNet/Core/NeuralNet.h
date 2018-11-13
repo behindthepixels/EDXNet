@@ -313,17 +313,17 @@ namespace EDX
 
 			for (int i = 0; i < x.LinearSize(); i++)
 			{
-				float originalVal = x[i];
+				float originalVal = x.Get(i);
 
-				x[i] = originalVal + step;
+				x.Set(i, originalVal + step);
 				Tensorf positive = f();
 
-				x[i] = originalVal - step;
+				x.Set(i, originalVal - step);
 				Tensorf negative = f();
 
-				x[i] = originalVal;
+				x.Set(i, originalVal);
 
-				gradient[i] = Tensorf::Sum((positive - negative) * upperGrads)[0] / (2.0f * step);
+				gradient.Set(i, Tensorf::Sum((positive - negative) * upperGrads).Get(0) / (2.0f * step));
 			}
 
 			return gradient;

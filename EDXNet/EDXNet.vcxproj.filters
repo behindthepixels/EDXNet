@@ -165,5 +165,8 @@
     <CudaCompile Include="Operators\FullyConnected.cu">
       <Filter>Source Files\Operators</Filter>
     </CudaCompile>
+    <CudaCompile Include="Operators\Convolution.cu">
+      <Filter>Source Files\Operators</Filter>
+    </CudaCompile>
   </ItemGroup>
 </Project>

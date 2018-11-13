@@ -139,7 +139,7 @@ namespace EDX
 				}
 
 
-				static StaticArray<TCHAR*, 10> GetLabelString()
+				static StaticArray<const TCHAR*, 10> GetLabelString()
 				{
 					return
 					{

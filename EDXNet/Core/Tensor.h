@@ -14,6 +14,8 @@
 #define lapack_complex_double std::complex<double>
 #include "../OpenBLAS/include/lapacke.h"
 
+#include <iostream>
+
 #include <ppl.h>
 using namespace concurrency;
 
@@ -909,7 +911,7 @@ namespace EDX
 					filledIndex.Add(0);
 				}
 
-				ret.mpData = &this->operator()(filledIndex);
+				ret.mpData = (T*)&this->operator()(filledIndex);
 				ret.mParams = mParams.GetSliceIndex(index.Size());
 				ret.mReleaseData = false;
 				return ret;
@@ -1044,6 +1046,64 @@ namespace EDX
 				Assert(idx < mParams.LinearSize());
 				return mpData[idx];
 			}
+
+			void Set(const TensorShape& idx, const T val)
+			{
+				if (TDeviceType == CPU)
+				{
+					mpData[LinearIndex(idx)] = val;
+				}
+				else if (TDeviceType == GPU)
+				{
+					cudaMemcpy(&mpData[LinearIndex(idx)], &val, sizeof(T), cudaMemcpyHostToDevice);
+				}
+			}
+			const T Get(const TensorShape& idx) const
+			{
+				if (TDeviceType == CPU)
+				{
+					return mpData[LinearIndex(idx)];
+				}
+				else if (TDeviceType == GPU)
+				{
+					T ret;
+					cudaMemcpy(&ret, &mpData[LinearIndex(idx)], sizeof(T), cudaMemcpyDeviceToHost);
+					return ret;
+				}
+
+				AssertNoEntry();
+				return 0;
+			}
+			void Set(const int idx, const T val)
+			{
+				Assert(idx < mParams.LinearSize());
+				if (TDeviceType == CPU)
+				{
+					mpData[idx] = val;
+				}
+				else if (TDeviceType == GPU)
+				{
+					cudaMemcpy(&mpData[idx], &val, sizeof(T), cudaMemcpyHostToDevice);
+				}
+			}
+			const T Get(const int idx) const
+			{
+				Assert(idx < mParams.LinearSize());
+				if (TDeviceType == CPU)
+				{
+					return mpData[idx];
+				}
+				else if (TDeviceType == GPU)
+				{
+					T ret;
+					cudaMemcpy(&ret, &mpData[idx], sizeof(T), cudaMemcpyDeviceToHost);
+					return ret;
+				}
+
+				AssertNoEntry();
+				return 0;
+			}
+
 			TENSOR_INLINE const T* Data() const
 			{
 				return mpData;
@@ -1089,6 +1149,27 @@ namespace EDX
 				stream >> newShape;
 				A.Resize(newShape);
 				stream.ByteOrderRead(A.Data(), A.LinearSize() * sizeof(T));
+
+				return stream;
+			}
+
+			friend std::ostream& operator << (std::ostream& stream, Tensor& A)
+			{
+				if (TDeviceType == CPU)
+				{
+					for (auto it : A)
+						stream << it;
+				}
+				else if (TDeviceType == GPU)
+				{
+					const auto numSamples = A.LinearSize();
+					Array<T> arr;
+					arr.Resize(numSamples);
+					cudaMemcpy(arr.Data(), A.Data(), numSamples * sizeof(T), cudaMemcpyDeviceToHost);
+
+					for (auto it : arr)
+						stream << it;
+				}
 
 				return stream;
 			}

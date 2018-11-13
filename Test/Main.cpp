@@ -51,7 +51,7 @@ void TestFullyConnected()
 	Tensorf correctResult = Tensorf({	{ 1.49834967f, 1.70660132f, 1.91485297f },
 										{ 3.25553199f, 3.5141327f, 3.77273342f } });
 
-	std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(result - correctResult)), 0.0f) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(result - correctResult))) << "\n";
 
 	Tensorf dataGrad = symbolsToEvaluate[0]->GetOutput(data->GetGradientIndex());
 	Tensorf weightsGrad = symbolsToEvaluate[1]->GetOutput(weights->GetGradientIndex());
@@ -77,9 +77,9 @@ void TestFullyConnected()
 		},
 		biases, upperGrads);
 
-	std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(dataGrad - dataNumericalGrad)), 0.0f) << "\n";
-	std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(weightsGrad - numericalWeightsGrad)), 0.0f) << "\n";
-	std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(biasesGrad - numericalBiasesGrad)), 0.0f) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(dataGrad - dataNumericalGrad))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(weightsGrad - numericalWeightsGrad))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(biasesGrad - numericalBiasesGrad))) << "\n";
 
 	NeuralNet::Release();
 }
@@ -123,7 +123,7 @@ bool TestConvolution()
 			{{2.36270298f, 2.36904306f},
 			{2.38090835f, 2.38247847f}}}} );
 
-	std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(result - correctResult)), 0.0f) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(result - correctResult))) << "\n";
 
 	Tensorf dataGrad = symbolsToEvaluate[0]->GetOutput(data->GetGradientIndex());
 	Tensorf weightsGrad = symbolsToEvaluate[1]->GetOutput(weights->GetGradientIndex());
@@ -149,9 +149,9 @@ bool TestConvolution()
 		},
 		biases, upperGrads);
 
-	std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(dataGrad - dataNumericalGrad)), 0.0f) << "\n";
-	std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(weightsGrad - numericalWeightsGrad)), 0.0f) << "\n";
-	std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(biasesGrad - numericalBiasesGrad)), 0.0f) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(dataGrad - dataNumericalGrad))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(weightsGrad - numericalWeightsGrad))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(biasesGrad - numericalBiasesGrad))) << "\n";
 
 	NeuralNet::Release();
 
@@ -177,7 +177,7 @@ bool TestRelu()
 									{ 0.0f, 0.0f, 0.04545455f, 0.13636364f, },
 									{ 0.22727273f, 0.31818182f, 0.40909091f, 0.5f, } });
 
-	std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(result - correctResult)), 0.0f) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(result - correctResult))) << "\n";
 
 	Tensorf dx = symbolsToEvaluate[0]->GetOutput(0);
 
@@ -189,7 +189,7 @@ bool TestRelu()
 	},
 	x, upperGrads);
 
-	std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(dx - dxNumerical)), 0.0f) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(dx - dxNumerical))) << "\n";
 
 	NeuralNet::Release();
 
@@ -225,7 +225,7 @@ void TestPooling()
 											{ { 0.32631579f, 0.34105263f },
 											{ 0.38526316f, 0.4f } } } });
 
-	std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(result - correctResult)), 0.0f) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(result - correctResult))) << "\n";
 
 	Tensorf dx = symbolsToEvaluate[0]->GetOutput(0);
 
@@ -237,7 +237,7 @@ void TestPooling()
 		},
 		x, upperGrads);
 
-	std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(dx - dxNumerical)), 0.0f) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(dx - dxNumerical))) << "\n";
 
 	NeuralNet::Release();
 }
@@ -283,8 +283,8 @@ void TestBatchNormalization()
 		//// Means should be close to zero and stds close to one
 		//Tensorf normalizedMean = Tensorf::Mean(normalized, { 0 });
 		//Tensorf normalizedStds = Tensorf::StandardDeviation(normalized, { 0 });
-		//std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(normalizedMean - Tensorf({ 11,12,13 }))), 0.0f) << "\n";
-		//std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(normalizedStds - Tensorf({ 1,2,3 }))), 0.0f) << "\n";
+		//std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(normalizedMean - Tensorf({ 11,12,13 })))) << "\n";
+		//std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(normalizedStds - Tensorf({ 1,2,3 })))) << "\n";
 
 		Tensorf dx = symbolsToEvaluate[0]->GetOutput(input->GetGradientIndex());
 		Tensorf dScale = symbolsToEvaluate[1]->GetOutput(scale->GetGradientIndex());
@@ -328,9 +328,9 @@ void TestBatchNormalization()
 			},
 			bias, upperGrads, 1e-3f);
 
-		std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(dx - dxNumeric)), 0.0f) << "\n";
-		std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(dScale - dScaleNumeric)), 0.0f) << "\n";
-		std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(dBias - dBiasNumeric)), 0.0f) << "\n";
+		std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(dx - dxNumeric))) << "\n";
+		std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(dScale - dScaleNumeric))) << "\n";
+		std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(dBias - dBiasNumeric))) << "\n";
 
 		NeuralNet::Release();
 	}
@@ -357,7 +357,7 @@ void TestSoftmax()
 	Tensorf result = softmax->GetOutput();
 	Tensorf correctResult = 2.3f;
 
-	std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(result - correctResult)), 0.0f) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(result - correctResult))) << "\n";
 
 	Tensorf dx = symbolsToEvaluate[0]->GetOutput(0);
 
@@ -369,7 +369,7 @@ void TestSoftmax()
 		},
 		x, upperGrads);
 
-	std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(dx - dxNumerical)), 0.0f) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(dx - dxNumerical))) << "\n";
 
 	NeuralNet::Release();
 }
@@ -435,9 +435,9 @@ void TestAdam()
 		{0.67473684f, 0.69421053f, 0.71368421f, 0.73315789f, 0.75263158f},
 		{0.77210526f, 0.79157895f, 0.81105263f, 0.83052632f, 0.85f} };
 
-	std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(w - expected_next_w)), 0.0f) << "\n";
-	std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(adam.mMapV[&w] - expected_v)), 0.0f) << "\n";
-	std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(adam.mMapM[&w] - expected_m)), 0.0f) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(w - expected_next_w))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(adam.mMapV[&w] - expected_v))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(adam.mMapM[&w] - expected_m))) << "\n";
 }
 
 void TestContentLoss()
@@ -469,7 +469,7 @@ void TestContentLoss()
 	},
 		imageFeature, upperGrads, 0.1f);
 
-	std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(imageGrad - imageNumericalGrad)), 0.0f) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(imageGrad - imageNumericalGrad))) << "\n";
 
 	NeuralNet::Release();
 }
@@ -503,7 +503,7 @@ void TestStyleLoss()
 		},
 		imageFeature, upperGrads, 0.1f);
 
-	std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(imageGrad - imageNumericalGrad)), 0.0f) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(imageGrad - imageNumericalGrad))) << "\n";
 
 	NeuralNet::Release();
 }
@@ -534,7 +534,7 @@ void TestTotalVariationLoss()
 		},
 		image, upperGrads, 0.001f);
 
-	std::cout << Algorithm::Accumulate(Tensorf(Tensorf::Abs(imageGrad - imageNumericalGrad)), 0.0f) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(imageGrad - imageNumericalGrad))) << "\n";
 
 	NeuralNet::Release();
 }
@@ -574,21 +574,21 @@ void main()
 	cublasStatus_t status;
 	status = cublasCreate(&Cublas::GetHandle());
 
-	TestFullyConnected();
-	TestRelu();
-	TestPooling();
-	TestConvolution();
-	TestSoftmax();
-	TestBatchNormalization();
-	//TestDropoutForward();
-	TestAdam();
-	TestStyleLoss();
-	TestContentLoss();
-	TestTotalVariationLoss();
+	//TestFullyConnected();
+	//TestRelu();
+	//TestPooling();
+	//TestConvolution();
+	//TestSoftmax();
+	//TestBatchNormalization();
+	////TestDropoutForward();
+	//TestAdam();
+	//TestStyleLoss();
+	//TestContentLoss();
+	//TestTotalVariationLoss();
 
 	//TestMattingLaplacian();
 
-	//TestCUDA();
+	TestCUDA();
 
 
 	Assertf(!_CrtDumpMemoryLeaks(), "Memory leak detected. See debug output for details");

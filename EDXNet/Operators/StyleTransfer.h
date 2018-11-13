@@ -277,7 +277,7 @@ namespace EDX
 				const int numChannel = image.Shape(0);
 				const int imgWidth = image.Shape(2);
 				const int imgHeight = image.Shape(1);
-				const int N = (imgWidth - 2 * r) * (imgHeight - 2 * r);
+				//const int N = (imgWidth - 2 * r) * (imgHeight - 2 * r);
 				const int windowDim = (2 * r + 1);
 				const int windowSize = windowDim * windowDim;
 				const float eps = 1e-7f;

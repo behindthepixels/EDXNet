@@ -18,25 +18,7 @@ namespace EDX
 				mNumHidden = numHidden;
 			}
 
-			void Init() override
-			{
-				const Tensorf& inputValue = mInputs[0]->GetOutput();
-
-				const int N = inputValue.Shape(0);
-				const int dim = inputValue.LinearSize() / inputValue.Shape(0);
-
-				Array<int> weightsShape = { dim, mNumHidden };
-
-				Tensorf& weights = mInputs[1]->GetOutput();
-				Tensorf& biases = mInputs[2]->GetOutput();
-
-				weights = Tensorf::RandomNormalDistribution(0.1f, dim, mNumHidden);
-				biases = Tensorf::Zeroes(mNumHidden);
-
-				Tensorf& output = GetOutput();
-				output.Resize(N, mNumHidden);
-			}
-
+			void Init() override;
 			void Evaluate() override;
 			Symbol* Gradient(Symbol* pUpperGrads) const override;
 

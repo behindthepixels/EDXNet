@@ -97,6 +97,10 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>../$(Configuration)/EDXUtil.lib;../$(Configuration)/EDXNet.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <CudaCompile>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
+      <AdditionalOptions>-Xcudafe --diag_suppress=useless_type_qualifier_on_return_type -Xcudafe --diag_suppress=bad_friend_decl -Xcudafe --diag_suppress=extra_semicolon -Xcudafe --diag_suppress=expr_not_object_pointer %(AdditionalOptions)</AdditionalOptions>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -114,6 +118,10 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>../x64/$(Configuration)/EDXUtil.lib;../x64/$(Configuration)/EDXNet.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <CudaCompile>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
+      <AdditionalOptions>-Xcudafe --diag_suppress=useless_type_qualifier_on_return_type -Xcudafe --diag_suppress=bad_friend_decl -Xcudafe --diag_suppress=extra_semicolon -Xcudafe --diag_suppress=expr_not_object_pointer %(AdditionalOptions)</AdditionalOptions>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -134,6 +142,10 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>../$(Configuration)/EDXUtil.lib;../$(Configuration)/EDXNet.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <CudaCompile>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
+      <AdditionalOptions>-Xcudafe --diag_suppress=useless_type_qualifier_on_return_type -Xcudafe --diag_suppress=bad_friend_decl -Xcudafe --diag_suppress=extra_semicolon -Xcudafe --diag_suppress=expr_not_object_pointer %(AdditionalOptions)</AdditionalOptions>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -155,6 +167,10 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>../x64/$(Configuration)/EDXUtil.lib;../x64/$(Configuration)/EDXNet.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <CudaCompile>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
+      <AdditionalOptions>-Xcudafe --diag_suppress=useless_type_qualifier_on_return_type -Xcudafe --diag_suppress=bad_friend_decl -Xcudafe --diag_suppress=extra_semicolon -Xcudafe --diag_suppress=expr_not_object_pointer %(AdditionalOptions)</AdditionalOptions>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp" />

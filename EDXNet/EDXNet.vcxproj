@@ -69,6 +69,7 @@
     </Natvis>
   </ItemGroup>
   <ItemGroup>
+    <CudaCompile Include="Operators\Convolution.cu" />
     <CudaCompile Include="Operators\FullyConnected.cu" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
@@ -149,7 +150,7 @@
     </PostBuildEvent>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
-      <CodeGeneration>compute_30,sm_30;compute_35,sm_35;compute_37,sm_37;compute_50,sm_50;compute_52,sm_52;compute_60,sm_60;compute_61,sm_61;compute_70,sm_70;compute_75,sm_75;</CodeGeneration>
+      <AdditionalOptions>-Xcudafe --diag_suppress=useless_type_qualifier_on_return_type -Xcudafe --diag_suppress=bad_friend_decl -Xcudafe --diag_suppress=extra_semicolon -Xcudafe --diag_suppress=expr_not_object_pointer %(AdditionalOptions)</AdditionalOptions>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -177,7 +178,7 @@
     </PostBuildEvent>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
-      <CodeGeneration>compute_30,sm_30;compute_35,sm_35;compute_37,sm_37;compute_50,sm_50;compute_52,sm_52;compute_60,sm_60;compute_61,sm_61;compute_70,sm_70;compute_75,sm_75;</CodeGeneration>
+      <AdditionalOptions>-Xcudafe --diag_suppress=useless_type_qualifier_on_return_type -Xcudafe --diag_suppress=bad_friend_decl -Xcudafe --diag_suppress=extra_semicolon -Xcudafe --diag_suppress=expr_not_object_pointer %(AdditionalOptions)</AdditionalOptions>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -209,7 +210,7 @@
     </PostBuildEvent>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
-      <CodeGeneration>compute_30,sm_30;compute_35,sm_35;compute_37,sm_37;compute_50,sm_50;compute_52,sm_52;compute_60,sm_60;compute_61,sm_61;compute_70,sm_70;compute_75,sm_75;</CodeGeneration>
+      <AdditionalOptions>-Xcudafe --diag_suppress=useless_type_qualifier_on_return_type -Xcudafe --diag_suppress=bad_friend_decl -Xcudafe --diag_suppress=extra_semicolon -Xcudafe --diag_suppress=expr_not_object_pointer %(AdditionalOptions)</AdditionalOptions>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -241,7 +242,7 @@
     </PostBuildEvent>
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
-      <CodeGeneration>compute_30,sm_30;compute_35,sm_35;compute_37,sm_37;compute_50,sm_50;compute_52,sm_52;compute_60,sm_60;compute_61,sm_61;compute_70,sm_70;compute_75,sm_75;</CodeGeneration>
+      <AdditionalOptions>-Xcudafe --diag_suppress=useless_type_qualifier_on_return_type -Xcudafe --diag_suppress=bad_friend_decl -Xcudafe --diag_suppress=extra_semicolon -Xcudafe --diag_suppress=expr_not_object_pointer %(AdditionalOptions)</AdditionalOptions>
     </CudaCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
