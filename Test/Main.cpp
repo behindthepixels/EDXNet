@@ -53,9 +53,9 @@ void TestFullyConnected()
 
 	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(result - correctResult))) << "\n";
 
-	Tensorf dataGrad = symbolsToEvaluate[0]->GetOutput(data->GetGradientIndex());
-	Tensorf weightsGrad = symbolsToEvaluate[1]->GetOutput(weights->GetGradientIndex());
-	Tensorf biasesGrad = symbolsToEvaluate[2]->GetOutput(biases->GetGradientIndex());
+	Tensorf& dataGrad = symbolsToEvaluate[0]->GetOutput(data->GetGradientIndex());
+	Tensorf& weightsGrad = symbolsToEvaluate[1]->GetOutput(weights->GetGradientIndex());
+	Tensorf& biasesGrad = symbolsToEvaluate[2]->GetOutput(biases->GetGradientIndex());
 
 	Tensorf upperGrads = Tensorf::Ones(result.Shape());
 	Tensorf dataNumericalGrad = NumericalGradientEval([&]() -> Tensorf
@@ -125,9 +125,9 @@ bool TestConvolution()
 
 	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(result - correctResult))) << "\n";
 
-	Tensorf dataGrad = symbolsToEvaluate[0]->GetOutput(data->GetGradientIndex());
-	Tensorf weightsGrad = symbolsToEvaluate[1]->GetOutput(weights->GetGradientIndex());
-	Tensorf biasesGrad = symbolsToEvaluate[2]->GetOutput(biases->GetGradientIndex());
+	Tensorf& dataGrad = symbolsToEvaluate[0]->GetOutput(data->GetGradientIndex());
+	Tensorf& weightsGrad = symbolsToEvaluate[1]->GetOutput(weights->GetGradientIndex());
+	Tensorf& biasesGrad = symbolsToEvaluate[2]->GetOutput(biases->GetGradientIndex());
 
 	Tensorf upperGrads = Tensorf::Ones(result.Shape());
 	Tensorf dataNumericalGrad = NumericalGradientEval([&]() -> Tensorf
@@ -179,7 +179,7 @@ bool TestRelu()
 
 	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(result - correctResult))) << "\n";
 
-	Tensorf dx = symbolsToEvaluate[0]->GetOutput(0);
+	Tensorf& dx = symbolsToEvaluate[0]->GetOutput(0);
 
 	Tensorf upperGrads = Tensorf::Ones(result.Shape());
 	Tensorf dxNumerical = NumericalGradientEval([&]() -> Tensorf
@@ -227,7 +227,7 @@ void TestPooling()
 
 	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(result - correctResult))) << "\n";
 
-	Tensorf dx = symbolsToEvaluate[0]->GetOutput(0);
+	Tensorf& dx = symbolsToEvaluate[0]->GetOutput(0);
 
 	Tensorf upperGrads = Tensorf::Ones(result.Shape());
 	Tensorf dxNumerical = NumericalGradientEval([&]() -> Tensorf
@@ -286,9 +286,9 @@ void TestBatchNormalization()
 		//std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(normalizedMean - Tensorf({ 11,12,13 })))) << "\n";
 		//std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(normalizedStds - Tensorf({ 1,2,3 })))) << "\n";
 
-		Tensorf dx = symbolsToEvaluate[0]->GetOutput(input->GetGradientIndex());
-		Tensorf dScale = symbolsToEvaluate[1]->GetOutput(scale->GetGradientIndex());
-		Tensorf dBias = symbolsToEvaluate[2]->GetOutput(bias->GetGradientIndex());
+		Tensorf& dx = symbolsToEvaluate[0]->GetOutput(input->GetGradientIndex());
+		Tensorf& dScale = symbolsToEvaluate[1]->GetOutput(scale->GetGradientIndex());
+		Tensorf& dBias = symbolsToEvaluate[2]->GetOutput(bias->GetGradientIndex());
 
 		Tensorf upperGrads = Tensorf::Ones(normalized.Shape());
 		Tensorf dxNumeric = NumericalGradientEval([&]() -> Tensorf
@@ -359,7 +359,7 @@ void TestSoftmax()
 
 	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(result - correctResult))) << "\n";
 
-	Tensorf dx = symbolsToEvaluate[0]->GetOutput(0);
+	Tensorf& dx = symbolsToEvaluate[0]->GetOutput(0);
 
 	Tensorf upperGrads = Tensorf::Ones(result.Shape());
 	Tensorf dxNumerical = NumericalGradientEval([&]() -> Tensorf
@@ -459,7 +459,7 @@ void TestContentLoss()
 
 	std::cout << contentLoss->GetOutput()[0] << "\n";
 
-	Tensorf imageGrad = symbolsToEvaluate[0]->GetOutput(imageFeature->GetGradientIndex());
+	Tensorf& imageGrad = symbolsToEvaluate[0]->GetOutput(imageFeature->GetGradientIndex());
 
 	Tensorf upperGrads = Tensorf::Ones(1);
 	Tensorf imageNumericalGrad = NumericalGradientEval([&]() -> Tensorf
@@ -493,7 +493,7 @@ void TestStyleLoss()
 
 	std::cout << styleLoss->GetOutput()[0] << "\n";
 
-	Tensorf imageGrad = symbolsToEvaluate[0]->GetOutput(imageFeature->GetGradientIndex());
+	Tensorf& imageGrad = symbolsToEvaluate[0]->GetOutput(imageFeature->GetGradientIndex());
 
 	Tensorf upperGrads = Tensorf::Ones(1);
 	Tensorf imageNumericalGrad = NumericalGradientEval([&]() -> Tensorf
@@ -524,7 +524,7 @@ void TestTotalVariationLoss()
 
 	std::cout << tvLoss->GetOutput()[0] << "\n";
 
-	Tensorf imageGrad = symbolsToEvaluate[0]->GetOutput(image->GetGradientIndex());
+	Tensorf& imageGrad = symbolsToEvaluate[0]->GetOutput(image->GetGradientIndex());
 
 	Tensorf upperGrads = Tensorf::Ones(1);
 	Tensorf imageNumericalGrad = NumericalGradientEval([&]() -> Tensorf

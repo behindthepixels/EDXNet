@@ -40,9 +40,9 @@ void TestFullyConnectedCUDA()
 
 	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(result - correctResult))) << "\n";
 
-	Tensorf dataGrad = symbolsToEvaluate[0]->GetOutput(data->GetGradientIndex());
-	Tensorf weightsGrad = symbolsToEvaluate[1]->GetOutput(weights->GetGradientIndex());
-	Tensorf biasesGrad = symbolsToEvaluate[2]->GetOutput(biases->GetGradientIndex());
+	Tensorf& dataGrad = symbolsToEvaluate[0]->GetOutput(data->GetGradientIndex());
+	Tensorf& weightsGrad = symbolsToEvaluate[1]->GetOutput(weights->GetGradientIndex());
+	Tensorf& biasesGrad = symbolsToEvaluate[2]->GetOutput(biases->GetGradientIndex());
 
 	Tensorf upperGrads = Tensorf::Ones(result.Shape());
 	Tensorf dataNumericalGrad = NumericalGradientEval([&]() -> Tensorf
@@ -112,9 +112,9 @@ bool TestConvolutionCUDA()
 
 	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(result - correctResult))) << "\n";
 
-	Tensorf dataGrad = symbolsToEvaluate[0]->GetOutput(data->GetGradientIndex());
-	Tensorf weightsGrad = symbolsToEvaluate[1]->GetOutput(weights->GetGradientIndex());
-	Tensorf biasesGrad = symbolsToEvaluate[2]->GetOutput(biases->GetGradientIndex());
+	Tensorf& dataGrad = symbolsToEvaluate[0]->GetOutput(data->GetGradientIndex());
+	Tensorf& weightsGrad = symbolsToEvaluate[1]->GetOutput(weights->GetGradientIndex());
+	Tensorf& biasesGrad = symbolsToEvaluate[2]->GetOutput(biases->GetGradientIndex());
 
 	Tensorf upperGrads = Tensorf::Ones(result.Shape());
 	Tensorf dataNumericalGrad = NumericalGradientEval([&]() -> Tensorf
@@ -139,6 +139,44 @@ bool TestConvolutionCUDA()
 	std::cout << Tensorf::Sum(Tensorf::Abs(dataGrad - dataNumericalGrad)) << "\n";
 	std::cout << Tensorf::Sum(Tensorf::Abs(weightsGrad - numericalWeightsGrad)) << "\n";
 	std::cout << Tensorf::Sum(Tensorf::Abs(biasesGrad - numericalBiasesGrad)) << "\n";
+
+	NeuralNet::Release();
+
+	return true;
+}
+
+bool TestReluCUDA()
+{
+	Tensorf input = Tensorf::LinSpace(-0.5, 0.5, 12).Reshape(3, 4);
+
+	Symbol* x = NeuralNet::Create<Variable>(input);
+	Symbol* relu = NeuralNet::Create<Relu>(x);
+
+	NeuralNet net(relu, true);
+
+	Array<Symbol*> symbolsToEvaluate = net.GetGradientSymbols({ x });
+	symbolsToEvaluate.Add(relu); // Add loss layer
+
+	net.Execute(symbolsToEvaluate);
+
+	Tensorf result = relu->GetOutput();
+	Tensorf correctResult = Tensorf({ { 0.0f, 0.0f, 0.0f, 0.0f, },
+									{ 0.0f, 0.0f, 0.04545455f, 0.13636364f, },
+									{ 0.22727273f, 0.31818182f, 0.40909091f, 0.5f, } });
+
+	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(result - correctResult))) << "\n";
+
+	Tensorf& dx = symbolsToEvaluate[0]->GetOutput(0);
+
+	Tensorf upperGrads = Tensorf::Ones(result.Shape());
+	Tensorf dxNumerical = NumericalGradientEval([&]() -> Tensorf
+		{
+			net.Execute({ relu });
+			return relu->GetOutput();
+		},
+		x, upperGrads);
+
+	std::cout << Tensorf::Sum(Tensorf(Tensorf::Abs(dx - dxNumerical))) << "\n";
 
 	NeuralNet::Release();
 
@@ -197,4 +235,5 @@ void TestCUDA()
 
 	TestFullyConnectedCUDA();
 	TestConvolutionCUDA();
+	TestReluCUDA();
 }

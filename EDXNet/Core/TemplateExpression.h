@@ -97,6 +97,14 @@ struct DivOp
 	}
 };
 
+struct ReluGradOp
+{
+	TENSOR_INLINE static float Exec(float a, float b)
+	{
+		return b >= 0.0f ? a : 0.0f;
+	}
+};
+
 // template binary operation, works for any expressions
 template<typename TOp, typename TLhs, typename TRhs>
 inline TBinaryExp<TOp, TLhs, TRhs> ElementWiseBinaryOpExpression(const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
@@ -126,6 +134,12 @@ template<typename TLhs, typename TRhs>
 inline TBinaryExp<DivOp, TLhs, TRhs> operator / (const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
 {
 	return ElementWiseBinaryOpExpression<DivOp>(lhs, rhs);
+}
+
+template<typename TLhs, typename TRhs>
+inline TBinaryExp<ReluGradOp, TLhs, TRhs> ReluGradExp(const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
+{
+	return ElementWiseBinaryOpExpression<ReluGradOp>(lhs, rhs);
 }
 
 template<typename TOp, typename TParam>

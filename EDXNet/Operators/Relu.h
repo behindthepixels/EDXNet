@@ -42,22 +42,7 @@ namespace EDX
 				mInputs[1] = pUpperGradients;
 			}
 
-			void Evaluate() override
-			{
-				const Tensorf& inputValue = mInputs[0]->GetOutput();
-				const Tensorf& upperGrads = mInputs[1]->GetOutput();
-
-				Tensorf& output = GetOutput();
-				output = upperGrads;
-
-				for (int i = 0; i < output.LinearSize(); i++)
-				{
-					if (inputValue[i] < 0.0f)
-						output[i] = 0.0f;
-				}
-
-				mInputs[0]->SetGradientIndex(0);
-			}
+			void Evaluate() override;
 		};
 	}
 }

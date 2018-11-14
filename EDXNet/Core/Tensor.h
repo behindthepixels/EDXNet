@@ -1158,7 +1158,7 @@ namespace EDX
 				if (TDeviceType == CPU)
 				{
 					for (auto it : A)
-						stream << it;
+						stream << it << " ";
 				}
 				else if (TDeviceType == GPU)
 				{
@@ -1168,7 +1168,7 @@ namespace EDX
 					cudaMemcpy(arr.Data(), A.Data(), numSamples * sizeof(T), cudaMemcpyDeviceToHost);
 
 					for (auto it : arr)
-						stream << it;
+						stream << it << " ";
 				}
 
 				return stream;
@@ -1525,7 +1525,7 @@ namespace EDX
 
 			static Tensor<T, TDeviceType> Sum(const Tensor<T, TDeviceType>& inTensor, const TensorShape& axises = { -1 }, const bool keepDim = false)
 			{
-				return ProjectionOp(inTensor, axises, keepDim, Algorithm::Plus<T>(), T(0));
+				return ProjectionOp(inTensor, axises, keepDim, Algorithm::Plus<>(), T(0));
 			}
 
 			static Tensor<T, TDeviceType> Product(const Tensor<T, TDeviceType>& inTensor, const TensorShape& axises = { -1 })
