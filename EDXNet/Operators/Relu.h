@@ -15,12 +15,7 @@ namespace EDX
 				mInputs[0] = pInput;
 			}
 
-			void Evaluate() override
-			{
-				const Tensorf& inputValue = mInputs[0]->GetOutput();
-
-				GetOutput() = Tensorf::ReluActivate(inputValue);
-			}
+			void Evaluate() override;
 
 			void Init()
 			{

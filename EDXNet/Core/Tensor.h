@@ -1523,6 +1523,12 @@ namespace EDX
 				return ReluActivateExp(param);
 			}
 
+			template<typename TLhs, typename TRhs>
+			static inline TBinaryExp<ReluGradOp, TLhs, TRhs> ReluGradient(const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
+			{
+				return ReluGradExp(lhs, rhs);
+			}
+
 			static Tensor<T, TDeviceType> Sum(const Tensor<T, TDeviceType>& inTensor, const TensorShape& axises = { -1 }, const bool keepDim = false)
 			{
 				return ProjectionOp(inTensor, axises, keepDim, Algorithm::Plus<>(), T(0));
