@@ -13,17 +13,17 @@ namespace EDX
 
 		struct MaxPoolOp
 		{
-			static float InitValue()
+			TENSOR_INLINE static float InitValue()
 			{
-				return Math::EDX_NEG_INFINITY;
+				return -1e32f;
 			}
 
-			static void Process(const float x, float& y)
+			TENSOR_INLINE static void Process(const float x, float& y)
 			{
 				y = Math::Max(x, y);
 			}
 
-			static float Finalize(const float value, const int pooledSize)
+			TENSOR_INLINE static float Finalize(const float value, const int pooledSize)
 			{
 				return value;
 			}
@@ -31,21 +31,26 @@ namespace EDX
 
 		struct AvgPoolOp
 		{
-			static float InitValue()
+			TENSOR_INLINE static float InitValue()
 			{
 				return 0.0f;
 			}
 
-			static void Process(const float x, float& y)
+			TENSOR_INLINE static void Process(const float x, float& y)
 			{
 				y += x;
 			}
 
-			static float Finalize(const float value, const int pooledSize)
+			TENSOR_INLINE static float Finalize(const float value, const int pooledSize)
 			{
 				return value / float(pooledSize);
 			}
 		};
+
+
+#ifdef __CUDACC__
+		#include "Pooling.cuh"
+#endif
 
 		template<typename Op>
 		class Pooling : public SymbolBase<1, 1>
@@ -77,37 +82,45 @@ namespace EDX
 				const int padHeight = mPadding[0], padWidth = mPadding[1];
 				const int strideHeight = mStride[0], strideWidth = mStride[1];
 
-				for (int n = 0; n < outputShape[0]; ++n)
+				if (inputValue.GetDeviceType() == CPU)
 				{
-					for (int c = 0; c < outputShape[1]; ++c)
+					for (int n = 0; n < outputShape[0]; ++n)
 					{
-						for (int ph = 0; ph < pooledHeight; ++ph)
+						for (int c = 0; c < outputShape[1]; ++c)
 						{
-							for (int pw = 0; pw < pooledWidth; ++pw)
+							for (int ph = 0; ph < pooledHeight; ++ph)
 							{
-								int hstart = ph * strideHeight - padHeight;
-								int wstart = pw * strideWidth - padWidth;
-								int hend = Math::Min(hstart + kernelHeight, height);
-								int wend = Math::Min(wstart + kernelWidth, width);
-								hstart = Math::Max(hstart, 0);
-								wstart = Math::Max(wstart, 0);
-								float pooledVal = Op::InitValue();
-
-								for (int h = hstart; h < hend; ++h)
+								for (int pw = 0; pw < pooledWidth; ++pw)
 								{
-									for (int w = wstart; w < wend; ++w)
+									int hstart = ph * strideHeight - padHeight;
+									int wstart = pw * strideWidth - padWidth;
+									int hend = Math::Min(hstart + kernelHeight, height);
+									int wend = Math::Min(wstart + kernelWidth, width);
+									hstart = Math::Max(hstart, 0);
+									wstart = Math::Max(wstart, 0);
+									float pooledVal = Op::InitValue();
+
+									for (int h = hstart; h < hend; ++h)
 									{
-										const int in_index = h * width + w;
-										const float val = inputValue(n, c, h, w);
+										for (int w = wstart; w < wend; ++w)
+										{
+											const float val = inputValue(n, c, h, w);
 
-										Op::Process(val, pooledVal);
+											Op::Process(val, pooledVal);
+										}
 									}
-								}
 
-								output(n, c, ph, pw) = Op::Finalize(pooledVal, (hend - hstart) * (wend - wstart));
+									output(n, c, ph, pw) = Op::Finalize(pooledVal, (hend - hstart) * (wend - wstart));
+								}
 							}
 						}
 					}
+				}
+				else if (inputValue.GetDeviceType() == GPU)
+				{
+#ifdef __CUDACC__
+					InvokePoolingKernel<Op>(inputValue, outputShape[1], height, width, pooledHeight, pooledWidth, kernelHeight, kernelWidth, padHeight, padWidth, strideHeight, strideWidth, output);
+#endif
 				}
 			}
 
@@ -143,7 +156,7 @@ namespace EDX
 
 		struct MaxPoolGradOp
 		{
-			static bool Process(const float x, const float y, const float dy, const int pooledSize, float& dx)
+			TENSOR_INLINE static bool Process(const float x, const float y, const float dy, const int pooledSize, float& dx)
 			{
 				if (x == y)
 				{
@@ -157,7 +170,7 @@ namespace EDX
 
 		struct AvgPoolGradOp
 		{
-			static bool Process(const float x, const float y, const float dy, const int pooledSize, float& dx)
+			TENSOR_INLINE static bool Process(const float x, const float y, const float dy, const int pooledSize, float& dx)
 			{
 				dx += dy / float(pooledSize);
 
@@ -204,46 +217,52 @@ namespace EDX
 				const int padHeight = mPadding[0], padWidth = mPadding[1];
 				const int strideHeight = mStride[0], strideWidth = mStride[1];
 
-				for (int n = 0; n < outputShape[0]; ++n)
+				if (inputValue.GetDeviceType() == CPU)
 				{
-					for (int c = 0; c < outputShape[1]; ++c)
+					for (int n = 0; n < outputShape[0]; ++n)
 					{
-						for (int ph = 0; ph < pooledHeight; ++ph)
+						for (int c = 0; c < outputShape[1]; ++c)
 						{
-							for (int pw = 0; pw < pooledWidth; ++pw)
+							for (int ph = 0; ph < pooledHeight; ++ph)
 							{
-								int hstart = ph * strideHeight - padHeight;
-								int wstart = pw * strideWidth - padWidth;
-								int hend = Math::Min(hstart + kernelHeight, height);
-								int wend = Math::Min(wstart + kernelWidth, width);
-								hstart = Math::Max(hstart, 0);
-								wstart = Math::Max(wstart, 0);
-								const int pool_index = ph * pooledWidth + pw;
-								StaticArray<int, 4> max_idx;
-								bool found = false;
-								for (int h = hstart; h < hend; ++h)
+								for (int pw = 0; pw < pooledWidth; ++pw)
 								{
-									for (int w = wstart; w < wend; ++w)
+									int hstart = ph * strideHeight - padHeight;
+									int wstart = pw * strideWidth - padWidth;
+									int hend = Math::Min(hstart + kernelHeight, height);
+									int wend = Math::Min(wstart + kernelWidth, width);
+									hstart = Math::Max(hstart, 0);
+									wstart = Math::Max(wstart, 0);
+									bool found = false;
+									for (int h = hstart; h < hend; ++h)
 									{
-										const int idx = h * width + w;
-
-										if (Op::Process(inputValue(n, c, h, w),
-											pooledValue(n, c, ph, pw),
-											upperGradsAlias(n, c, ph, pw),
-											(hend - hstart) * (wend - wstart),
-											output(n, c, h, w)))
+										for (int w = wstart; w < wend; ++w)
 										{
-											found = true;
-											break;
+											if (Op::Process(inputValue(n, c, h, w),
+												pooledValue(n, c, ph, pw),
+												upperGradsAlias(n, c, ph, pw),
+												(hend - hstart) * (wend - wstart),
+												output(n, c, h, w)))
+											{
+												found = true;
+												break;
+											}
 										}
+										if (found)
+											break;
 									}
-									if (found)
-										break;
 								}
 							}
 						}
 					}
 				}
+				else if (inputValue.GetDeviceType() == GPU)
+				{
+#ifdef __CUDACC__
+					InvokePoolingGradientKernel<Op>(inputValue, pooledValue, upperGradsAlias, outputShape[1], height, width, pooledHeight, pooledWidth, kernelHeight, kernelWidth, padHeight, padWidth, strideHeight, strideWidth, output);
+#endif
+				}
+
 			}
 
 		private:

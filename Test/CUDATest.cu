@@ -183,6 +183,53 @@ bool TestReluCUDA()
 	return true;
 }
 
+
+void TestPoolingCUDA()
+{
+	TensorShape xShape = { 2,3,4,4 };
+	Tensorf input = Tensorf::LinSpace(-0.3f, 0.4f, Algorithm::Accumulate(xShape, 1, Algorithm::Multiply<>())).Reshape(xShape);
+
+	Symbol* x = NeuralNet::Create<Variable>(input);
+	Symbol* pooling = NeuralNet::Create<MaxPooling>(x, TensorShape({ 2,2 }), TensorShape({ 2,2 }), TensorShape({ 0,0 }));
+
+	NeuralNet net(pooling, true);
+
+	Array<Symbol*> symbolsToEvaluate = net.GetGradientSymbols({ x });
+	symbolsToEvaluate.Add(pooling); // Add loss layer
+
+	net.Execute(symbolsToEvaluate);
+
+	Tensorf& result = pooling->GetOutput();
+	Tensorf correctResult = Tensorf({ { { { -0.26315789f, -0.24842105f },
+											{ -0.20421053f, -0.18947368f } },
+											{ { -0.14526316f, -0.13052632f },
+											{ -0.08631579f, -0.07157895f } },
+											{ { -0.02736842f, -0.01263158f },
+											{ 0.03157895f, 0.04631579f } } },
+											{ { { 0.09052632f, 0.10526316f },
+											{ 0.14947368f, 0.16421053f } },
+											{ { 0.20842105f, 0.22315789f },
+											{ 0.26736842f, 0.28210526f } },
+											{ { 0.32631579f, 0.34105263f },
+											{ 0.38526316f, 0.4f } } } });
+
+	std::cout << Tensorf::Sum(Tensorf::Abs(result - correctResult)) << "\n";
+
+	Tensorf& dx = symbolsToEvaluate[0]->GetOutput(0);
+
+	Tensorf upperGrads = Tensorf::Ones(result.Shape());
+	Tensorf dxNumerical = NumericalGradientEval([&]() -> Tensorf
+		{
+			net.Execute({ pooling });
+			return pooling->GetOutput();
+		},
+		x, upperGrads);
+
+	std::cout << Tensorf::Sum(Tensorf::Abs(dx - dxNumerical)) << "\n";
+
+	NeuralNet::Release();
+}
+
 void TestCUDA()
 {
 	{
@@ -236,4 +283,5 @@ void TestCUDA()
 	TestFullyConnectedCUDA();
 	TestConvolutionCUDA();
 	TestReluCUDA();
+	TestPoolingCUDA();
 }

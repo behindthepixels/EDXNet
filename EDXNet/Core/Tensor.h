@@ -541,6 +541,12 @@ namespace EDX
 			bool mReleaseData = true;
 
 		public:
+
+			DeviceType GetDeviceType() const
+			{
+				return TDeviceType;
+			}
+
 			Tensor()
 				: mpData(nullptr)
 				, mReleaseData(true)
