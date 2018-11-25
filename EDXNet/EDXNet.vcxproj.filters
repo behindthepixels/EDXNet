@@ -108,7 +108,7 @@
     <ClInclude Include="Core\TensorKernels.cuh">
       <Filter>Source Files\Core</Filter>
     </ClInclude>
-    <ClInclude Include="Operators\Pooling.cuh">
+    <ClInclude Include="Operators\Pooling.cpp">
       <Filter>Source Files\Operators</Filter>
     </ClInclude>
   </ItemGroup>
@@ -172,6 +172,9 @@
       <Filter>Source Files\Operators</Filter>
     </CudaCompile>
     <CudaCompile Include="Operators\Pooling.cu">
+      <Filter>Source Files\Operators</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Operators\Predictor.cu">
       <Filter>Source Files\Operators</Filter>
     </CudaCompile>
   </ItemGroup>

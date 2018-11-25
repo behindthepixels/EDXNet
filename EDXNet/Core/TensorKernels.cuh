@@ -310,7 +310,7 @@ void InvokeTensorProjectionOp(TensorT& ret, const TensorT& lhs, const TensorPara
 {
 	const int linearSize = ret.LinearSize();
 	const int blockDim = 256;
-	const int gridDim = linearSize;
+	const int gridDim = (linearSize + blockDim - 1) / blockDim;
 
 	TensorProjectionOpKernel<<<gridDim, blockDim>>>(ret.Self(), lhs.Self(), params, axises, op, initVal);
 }

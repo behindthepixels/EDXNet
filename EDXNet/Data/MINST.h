@@ -10,13 +10,16 @@ namespace EDX
 	{
 		namespace DataSet
 		{
+			using Label = float;
+			using Labels = Tensor<Label, CPU>;
+
 			class MNIST
 			{
 			private:
-				Tensorf mTrainData;
+				Tensor<float, CPU> mTrainData;
 				Labels mTrainLabels;
 
-				Tensorf mTestData;
+				Tensor<float, CPU> mTestData;
 				Labels mTestLabels;
 
 			public:
@@ -30,11 +33,11 @@ namespace EDX
 					mTestData = ParseImages(directory + "/t10k-images.idx3-ubyte");
 				}
 
-				const Tensorf& GetTrainingData() const
+				const Tensor<float, CPU>& GetTrainingData() const
 				{
 					return mTrainData;
 				}
-				Tensorf& GetTrainingData()
+				Tensor<float, CPU>& GetTrainingData()
 				{
 					return mTrainData;
 				}
@@ -48,11 +51,11 @@ namespace EDX
 					return mTrainLabels;
 				}
 
-				const Tensorf& GetTestData() const
+				const Tensor<float, CPU>& GetTestData() const
 				{
 					return mTestData;
 				}
-				Tensorf& GetTestData()
+				Tensor<float, CPU>& GetTestData()
 				{
 					return mTestData;
 				}
@@ -84,7 +87,7 @@ namespace EDX
 
 					Assertf(magicNum == 0x00000801, "MNIST label-file format error");
 
-					Tensor<uint8> temp;
+					Tensor<uint8, CPU> temp;
 					temp.Resize((int)numItems);
 					stream.ByteOrderRead(temp.Data(), numItems);
 
@@ -97,9 +100,9 @@ namespace EDX
 					return ret;
 				}
 
-				Tensorf ParseImages(const String& path)
+				Tensor<float, CPU> ParseImages(const String& path)
 				{
-					Tensorf ret;
+					Tensor<float, CPU> ret;
 
 					FileStream stream(path.GetCString(), FileMode::Open);
 
@@ -117,7 +120,7 @@ namespace EDX
 
 					Assertf(magicNum == 0x00000803, "MNIST label-file format error");
 
-					Tensor<uint8> temp;
+					Tensor<uint8, CPU> temp;
 					temp.Resize((int)numItems, 1, height, width);
 					stream.ByteOrderRead(temp.Data(), width * height * numItems);
 

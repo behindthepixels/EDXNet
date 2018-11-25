@@ -1,15 +1,13 @@
 
-#include "Core/EDXNet.h"
-#include "Models/LeNet.h"
-#include "Models/VGG19.h"
+//#include "Core/EDXNet.h"
+//#include "Models/LeNet.h"
+//#include "Models/VGG19.h"
 
 #include "Windows/Bitmap.h"
 #include "Graphics/Color.h"
 #include "Graphics/Texture.h"
 
 using namespace EDX;
-using namespace EDX::DeepLearning;
-using namespace EDX::Algorithm;
 
 
 Color* ImageResample(const Texture2D<Color>* pTex, const int width, const int height)
@@ -33,6 +31,8 @@ Color* ImageResample(const Texture2D<Color>* pTex, const int width, const int he
 	return pRet;
 }
 
+void VGG19CUDA(const float* pfImage);
+
 void main()
 {
 	int imgWidth, imgHeight, imgChannel;
@@ -50,22 +50,9 @@ void main()
 		pfImage[i * 3 + 2] = resizedTexture[i].r * 255.0f;
 	}
 
-	Tensorf image;
-	image.Assign(pfImage, { 1, 224, 224, 3 });
-	image -= DataSet::ImageNet::GetMeanImage();
-	image = Tensorf::Transpose(image, { 0, 3, 1, 2 });
+	VGG19CUDA(pfImage);
 
 	delete[] pImage;
 	delete[] resizedTexture;
 	delete[] pfImage;
-
-	VGG19 vgg19 = VGG19::CreateForInference("../Models/VGG19.dat");
-
-	vgg19.input->SetData(image);
-	NeuralNet net(vgg19.loss, false, false);
-
-	net.Execute({ vgg19.loss });
-	std::cout << DataSet::ImageNet::GetLabelString()[vgg19.loss->GetOutput()(0, 0)] << std::endl;
-
-	NeuralNet::Release();
 }

@@ -53,6 +53,7 @@
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 10.0.props" />
   </ImportGroup>
   <ImportGroup Label="Shared">
   </ImportGroup>
@@ -90,12 +91,17 @@
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+      <AdditionalIncludeDirectories>../../EDXUtil/EDXUtil;../EDXNet;$(CudaToolkitIncludeDir);</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>../$(Configuration)/EDXUtil.lib;../$(Configuration)/EDXNet.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <CudaCompile>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
+      <AdditionalOptions>-Xcudafe --diag_suppress=useless_type_qualifier_on_return_type -Xcudafe --diag_suppress=bad_friend_decl -Xcudafe --diag_suppress=extra_semicolon -Xcudafe --diag_suppress=expr_not_object_pointer %(AdditionalOptions)</AdditionalOptions>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -105,7 +111,7 @@
       <Optimization>Disabled</Optimization>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../../EDXUtil/EDXUtil;../EDXNet;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../EDXUtil/EDXUtil;../EDXNet;$(CudaToolkitIncludeDir);</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -113,6 +119,10 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>../x64/$(Configuration)/EDXUtil.lib;../x64/$(Configuration)/EDXNet.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <CudaCompile>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
+      <AdditionalOptions>-Xcudafe --diag_suppress=useless_type_qualifier_on_return_type -Xcudafe --diag_suppress=bad_friend_decl -Xcudafe --diag_suppress=extra_semicolon -Xcudafe --diag_suppress=expr_not_object_pointer %(AdditionalOptions)</AdditionalOptions>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
@@ -125,6 +135,7 @@
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <AdditionalIncludeDirectories>../../EDXUtil/EDXUtil;../EDXNet;$(CudaToolkitIncludeDir);</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -133,6 +144,10 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>../$(Configuration)/EDXUtil.lib;../$(Configuration)/EDXNet.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <CudaCompile>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
+      <AdditionalOptions>-Xcudafe --diag_suppress=useless_type_qualifier_on_return_type -Xcudafe --diag_suppress=bad_friend_decl -Xcudafe --diag_suppress=extra_semicolon -Xcudafe --diag_suppress=expr_not_object_pointer %(AdditionalOptions)</AdditionalOptions>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -144,7 +159,7 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <SDLCheck>true</SDLCheck>
-      <AdditionalIncludeDirectories>../../EDXUtil/EDXUtil;../EDXNet;</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>../../EDXUtil/EDXUtil;../EDXNet;$(CudaToolkitIncludeDir);</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
@@ -154,11 +169,19 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>../x64/$(Configuration)/EDXUtil.lib;../x64/$(Configuration)/EDXNet.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <CudaCompile>
+      <TargetMachinePlatform>64</TargetMachinePlatform>
+      <AdditionalOptions>-Xcudafe --diag_suppress=useless_type_qualifier_on_return_type -Xcudafe --diag_suppress=bad_friend_decl -Xcudafe --diag_suppress=extra_semicolon -Xcudafe --diag_suppress=expr_not_object_pointer %(AdditionalOptions)</AdditionalOptions>
+    </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="CUDATest.cu" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(VCTargetsPath)\BuildCustomizations\CUDA 10.0.targets" />
   </ImportGroup>
 </Project>

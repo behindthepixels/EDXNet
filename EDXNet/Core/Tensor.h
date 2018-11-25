@@ -538,7 +538,7 @@ namespace EDX
 		protected:
 			T* mpData;
 			TensorParams mParams;
-			bool mReleaseData = true;
+			bool mbDataOwner = true;
 
 		public:
 
@@ -547,9 +547,14 @@ namespace EDX
 				return TDeviceType;
 			}
 
+			bool IsDataOwner() const
+			{
+				return mbDataOwner;
+			}
+
 			Tensor()
 				: mpData(nullptr)
-				, mReleaseData(true)
+				, mbDataOwner(true)
 			{
 			}
 
@@ -576,6 +581,20 @@ namespace EDX
 				this->operator=(val);
 			}
 
+			template<DeviceType TDeviceType2>
+			Tensor(const Tensor<T, TDeviceType2>& rhs)
+				: mpData(nullptr)
+			{
+				Resize(rhs.Shape());
+
+				if (TDeviceType == CPU && rhs.GetDeviceType() == GPU)
+					cudaMemcpy(mpData, rhs.Data(), LinearSize() * sizeof(T), cudaMemcpyDeviceToHost);
+				else if (TDeviceType == GPU && rhs.GetDeviceType() == CPU)
+					cudaMemcpy(mpData, rhs.Data(), LinearSize() * sizeof(T), cudaMemcpyHostToDevice);
+
+				mbDataOwner = rhs.IsDataOwner();
+			}
+
 			Tensor& operator = (const Tensor& rhs)
 			{
 				Resize(rhs.Shape());
@@ -585,16 +604,29 @@ namespace EDX
 				else if (TDeviceType == GPU)
 					cudaMemcpy(mpData, rhs.mpData, LinearSize() * sizeof(T), cudaMemcpyDeviceToDevice);
 
-				mReleaseData = rhs.mReleaseData;
+				mbDataOwner = rhs.mbDataOwner;
 				return *this;
 			}
+
+			//template<DeviceType TDeviceType2>
+			//void Assign(const Tensor<T, TDeviceType2>& rhs)
+			//{
+			//	Resize(rhs.Shape());
+
+			//	if (TDeviceType == CPU && rhs.GetDeviceType() == GPU)
+			//		cudaMemcpy(mpData, rhs.Data(), LinearSize() * sizeof(T), cudaMemcpyDeviceToHost);
+			//	else if (TDeviceType == GPU && rhs.GetDeviceType() == CPU)
+			//		cudaMemcpy(mpData, rhs.Data(), LinearSize() * sizeof(T), cudaMemcpyHostToDevice);
+
+			//	mReleaseData = rhs.GetReleaseData();
+			//}
 
 			Tensor& operator = (Tensor&& rhs)
 			{
 				Free();
 				mParams = rhs.mParams;
 				mpData = rhs.mpData;
-				mReleaseData = rhs.mReleaseData;
+				mbDataOwner = rhs.mbDataOwner;
 				rhs.mpData = nullptr;
 				return *this;
 			}
@@ -610,7 +642,7 @@ namespace EDX
 					*mpData = val;
 				else if (TDeviceType == GPU)
 					cudaMemcpy(mpData, &val, sizeof(T), cudaMemcpyHostToDevice);
-				mReleaseData = true;
+				mbDataOwner = true;
 				return *this;
 			}
 
@@ -788,7 +820,7 @@ namespace EDX
 				if (TDeviceType == CPU)
 					Memory::Memcpy(mpData, pData, LinearSize() * sizeof(T));
 				else if (TDeviceType == GPU)
-					cudaMemcpy(mpData, pData, LinearSize() * sizeof(T));
+					cudaMemcpy(mpData, pData, LinearSize() * sizeof(T), cudaMemcpyHostToDevice);
 			}
 
 			void Assign(const T val, const TensorShape& shape)
@@ -829,7 +861,7 @@ namespace EDX
 				Tensor ret;
 				ret.mParams = mParams;
 				ret.mpData = mpData;
-				ret.mReleaseData = false;
+				ret.mbDataOwner = false;
 
 				ret.mParams.Transpose(transposeDim);
 
@@ -850,7 +882,7 @@ namespace EDX
 				ret.mParams = mParams;
 				ret.mParams.Reshape(shape);
 				ret.mpData = mpData;
-				ret.mReleaseData = false;
+				ret.mbDataOwner = false;
 				return ret;
 			}
 
@@ -868,7 +900,7 @@ namespace EDX
 				ret.mParams = mParams;
 				ret.mParams.Reshape(shape);
 				ret.mpData = mpData;
-				ret.mReleaseData = false;
+				ret.mbDataOwner = false;
 				return ret;
 			}
 
@@ -893,7 +925,7 @@ namespace EDX
 
 				ret.mpData = &this->operator()(filledIndex);
 				ret.mParams = mParams.GetSliceIndex(index.Size());
-				ret.mReleaseData = false;
+				ret.mbDataOwner = false;
 				return ret;
 			}
 
@@ -919,7 +951,7 @@ namespace EDX
 
 				ret.mpData = (T*)&this->operator()(filledIndex);
 				ret.mParams = mParams.GetSliceIndex(index.Size());
-				ret.mReleaseData = false;
+				ret.mbDataOwner = false;
 				return ret;
 			}
 
@@ -931,7 +963,7 @@ namespace EDX
 
 				ret.mpData = mpData + from * mParams.Stride(0);
 				ret.mParams = mParams.GetSectionIndex(to - from);
-				ret.mReleaseData = false;
+				ret.mbDataOwner = false;
 
 				return ret;
 			}
@@ -944,7 +976,7 @@ namespace EDX
 
 				ret.mpData = mpData + from * mParams.Stride(0);
 				ret.mParams = mParams.GetSectionIndex(to - from);
-				ret.mReleaseData = false;
+				ret.mbDataOwner = false;
 
 				return ret;
 			}
@@ -1121,7 +1153,7 @@ namespace EDX
 
 			void Free()
 			{
-				if (mReleaseData)
+				if (mbDataOwner)
 				{
 					if (TDeviceType == CPU)
 					{
@@ -1143,7 +1175,20 @@ namespace EDX
 			{
 				// Save array.
 				stream << A.Shape();
-				stream.ByteOrderWrite(A.Data(), A.LinearSize() * sizeof(T));
+
+				if (TDeviceType == CPU)
+				{
+					stream.ByteOrderWrite(A.Data(), A.LinearSize() * sizeof(T));
+				}
+				else if (TDeviceType == GPU)
+				{
+					const auto numSamples = A.LinearSize();
+					Array<T> arr;
+					arr.Resize(numSamples);
+					cudaMemcpy(arr.Data(), A.Data(), numSamples * sizeof(T), cudaMemcpyDeviceToHost);
+
+					stream.ByteOrderWrite(arr.Data(), arr.Size() * sizeof(T));
+				}
 
 				return stream;
 			}
@@ -1153,8 +1198,22 @@ namespace EDX
 				// Load array.
 				TensorShape newShape;
 				stream >> newShape;
+
 				A.Resize(newShape);
-				stream.ByteOrderRead(A.Data(), A.LinearSize() * sizeof(T));
+
+				if (TDeviceType == CPU)
+				{
+					stream.ByteOrderRead(A.Data(), A.LinearSize() * sizeof(T));
+				}
+				else if (TDeviceType == GPU)
+				{
+					Array<T> arr;
+					arr.Resize(A.LinearSize());
+
+					stream.ByteOrderRead(arr.Data(), arr.Size() * sizeof(T));
+
+					cudaMemcpy(A.Data(), arr.Data(), A.LinearSize() * sizeof(T), cudaMemcpyHostToDevice);
+				}
 
 				return stream;
 			}
@@ -1658,20 +1717,20 @@ namespace EDX
 				return ret;
 			}
 
-			void operator += (const Tensor<T, TDeviceType>& rhs)
+			__forceinline void operator += (const Tensor<T, TDeviceType>& rhs)
 			{
 				ElementWiseBinaryOpInplace(*this, rhs, Algorithm::Plus<>());
 			}
-			void operator -= (const Tensor<T, TDeviceType>& rhs)
+			__forceinline void operator -= (const Tensor<T, TDeviceType>& rhs)
 			{
 				ElementWiseBinaryOpInplace(*this, rhs, Algorithm::Substract<>());
 			}
 
-			void operator *= (const Tensor<T, TDeviceType>& rhs)
+			__forceinline void operator *= (const Tensor<T, TDeviceType>& rhs)
 			{
 				ElementWiseBinaryOpInplace(*this, rhs, Algorithm::Multiply<>());
 			}
-			void operator /= (const Tensor<T, TDeviceType>& rhs)
+			__forceinline void operator /= (const Tensor<T, TDeviceType>& rhs)
 			{
 				ElementWiseBinaryOpInplace(*this, rhs, Algorithm::Divide<>());
 			}
@@ -1821,8 +1880,5 @@ namespace EDX
 		using Tensorf = Tensor<float>;
 		using Tensord = Tensor<double>;
 		using Tensori = Tensor<int>;
-
-		using Label = float;
-		using Labels = Tensor<Label>;
 	}
 }

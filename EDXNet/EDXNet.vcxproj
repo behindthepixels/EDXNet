@@ -35,7 +35,7 @@
     <ClInclude Include="Operators\Dropout.h" />
     <ClInclude Include="Operators\FullyConnected.h" />
     <ClInclude Include="Operators\Ones.h" />
-    <ClInclude Include="Operators\Pooling.cuh" />
+    <ClCompile Include="Operators\Pooling.cpp" />
     <ClInclude Include="Operators\Pooling.h" />
     <ClInclude Include="Operators\Predictor.h" />
     <ClInclude Include="Operators\Relu.h" />
@@ -72,6 +72,7 @@
     <CudaCompile Include="Operators\Convolution.cu" />
     <CudaCompile Include="Operators\FullyConnected.cu" />
     <CudaCompile Include="Operators\Pooling.cu" />
+    <CudaCompile Include="Operators\Predictor.cu" />
     <CudaCompile Include="Operators\Relu.cu" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

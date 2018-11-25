@@ -4,8 +4,8 @@
 #include "../Operators/Variable.h"
 #include "../Operators/FullyConnected.h"
 #include "../Operators/Convolution.h"
+#include "../Operators/Pooling.h"
 #include "../Operators/Relu.h"
-#include "../Operators/Softmax.h"
 #include "../Operators/Predictor.h"
 
 #include "Windows/FileStream.h"
@@ -279,6 +279,16 @@ namespace EDX
 			conv5_3_Biases = NeuralNet::Create<Constant>();
 			conv5_4_Weights = NeuralNet::Create<Constant>();
 			conv5_4_Biases = NeuralNet::Create<Constant>();
+
+			if (withFullyConnected)
+			{
+				fc1_Weights = NeuralNet::Create<Constant>();
+				fc1_Biases = NeuralNet::Create<Constant>();
+				fc2_Weights = NeuralNet::Create<Constant>();
+				fc2_Biases = NeuralNet::Create<Constant>();
+				fc3_Weights = NeuralNet::Create<Constant>();
+				fc3_Biases = NeuralNet::Create<Constant>();
+			}
 		}
 
 		void VGG19Weights::CreateVariable()
@@ -315,6 +325,16 @@ namespace EDX
 			conv5_3_Biases = NeuralNet::Create<Variable>();
 			conv5_4_Weights = NeuralNet::Create<Variable>();
 			conv5_4_Biases = NeuralNet::Create<Variable>();
+
+			if (withFullyConnected)
+			{
+				fc1_Weights = NeuralNet::Create<Variable>();
+				fc1_Biases = NeuralNet::Create<Variable>();
+				fc2_Weights = NeuralNet::Create<Variable>();
+				fc2_Biases = NeuralNet::Create<Variable>();
+				fc3_Weights = NeuralNet::Create<Variable>();
+				fc3_Biases = NeuralNet::Create<Variable>();
+			}
 		}
 	}
 }

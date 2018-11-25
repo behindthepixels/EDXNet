@@ -21,6 +21,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Test", "Test\Test.vcxproj",
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ImageClassification", "ImageClassification\ImageClassification.vcxproj", "{0E045F71-7B3C-475C-9862-627F424F13B9}"
+	ProjectSection(ProjectDependencies) = postProject
+		{A71B6E17-EABD-4259-8F72-B5222FB6FF1C} = {A71B6E17-EABD-4259-8F72-B5222FB6FF1C}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "StyleTransfer", "StyleTransfer\StyleTransfer.vcxproj", "{97D6F3DE-D4BA-4CA5-964D-91592F7BD193}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -86,5 +89,8 @@ Global
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {3560E04D-FA6D-4FE5-9A7D-D17C9D9E63F8}
 	EndGlobalSection
 EndGlobal
