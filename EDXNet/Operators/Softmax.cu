@@ -36,7 +36,7 @@ namespace EDX
 				const int blockDim = 256;
 				const int gridDim = (N + blockDim - 1) / blockDim;
 
-				SoftmaxKernel<<<gridDim, blockDim>>>(mProbs.Self(), labels.Self(), correctProbs.Self());
+				SoftmaxKernel<<<gridDim, blockDim>>>(mProbs.Self(), labels.Self(), mCorrectProbs.Self());
 			}
 
 			// Loss
