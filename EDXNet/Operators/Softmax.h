@@ -15,31 +15,13 @@ namespace EDX
 				mInputs[1] = pLabels;
 			}
 
-			void Evaluate() override
-			{
-				const Tensorf& inputValue = mInputs[0]->GetOutput();
-				const Tensorf& labels = mInputs[1]->GetOutput();
-
-				Tensorf probs = Tensorf::Exp(inputValue - Tensorf::Max(inputValue, { 1 }, true));
-				probs /= Tensorf::Sum(probs, { 1 }, true);
-
-				const int N = inputValue.Shape(0);
-
-				Tensorf correctProbs;
-				correctProbs.Resize(N);
-				for (int i = 0; i < N; i++)
-				{
-					correctProbs[i] = probs(i, int(labels[i]));
-				}
-
-				// Loss
-				Tensorf& output = GetOutput(0);
-				output = Scalar(-1.0f) * Tensorf::Sum(Tensorf::Log(correctProbs)) / Scalar(N);
-			}
+			void Evaluate() override;
 
 			Symbol* Gradient(Symbol* pUpperGrads) const override;
 
 		private:
+			Tensorf mProbs;
+			Tensorf mCorrectProbs;
 			float mRegularizationStrength = 1e-5f;
 		};
 
@@ -52,22 +34,10 @@ namespace EDX
 				mInputs[1] = pLabels;
 			}
 
-			void Evaluate() override
-			{
-				const Tensorf& inputValue = mInputs[0]->GetOutput();
-				const Tensorf& labels = mInputs[1]->GetOutput();
+			void Evaluate() override;
 
-				Tensorf probs = Tensorf::Exp(inputValue - Tensorf::Max(inputValue, { 1 }, true));
-				probs /= Tensorf::Sum(probs, { 1 }, true);
-
-				const int N = inputValue.Shape(0);
-				for (int i = 0; i < N; i++)
-					probs(i, int(labels[i])) -= 1.0f;
-
-				// dx
-				Tensorf& output = GetOutput(0);
-				output = probs / Scalar(float(N));
-			}
+		private:
+			Tensorf mProbs;
 		};
 	}
 }

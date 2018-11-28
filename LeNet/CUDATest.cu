@@ -36,6 +36,14 @@ void LeNetRunCUDA()
 
 void LeNetTrainCUDA()
 {
+	// Todo: Dummy way to force the compiler to compile the += opeartor of Tensor class with nvcc
+	{
+		Tensorf A = { 0 };
+		Tensorf B = { 0 };
+
+		A += B;
+	}
+
 	DataSet::MNIST mnist;
 	mnist.Load("D:/Coding/DataSet/MNIST");
 
@@ -82,7 +90,8 @@ void LeNetTrainCUDA()
 				adam.Step(param, gradient);
 			}
 
-			std::cout << "Loss: " << leNet.leNet->GetOutput()[0] << "\n";
+			Tensor<float, CPU> loss = leNet.leNet->GetOutput();
+			std::cout << "Loss: " << loss[0] << "\n";
 		}
 
 		mLearningRate *= 0.995f;

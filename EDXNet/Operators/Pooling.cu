@@ -14,6 +14,9 @@ namespace EDX
 			Tensorf outTensor)
 		{
 			const int index = blockIdx.x * blockDim.x + threadIdx.x;
+			if (index >= numThreads)
+				return;
+
 			const int pw = index % pooledWidth;
 			const int ph = (index / pooledWidth) % pooledHeight;
 			const int c = (index / pooledWidth / pooledHeight) % channels;
@@ -74,6 +77,9 @@ namespace EDX
 			Tensorf outTensor)
 		{
 			const int index = blockIdx.x * blockDim.x + threadIdx.x;
+			if (index >= numThreads)
+				return;
+
 			const int pw = index % pooledWidth;
 			const int ph = (index / pooledWidth) % pooledHeight;
 			const int c = (index / pooledWidth / pooledHeight) % channels;
@@ -114,7 +120,7 @@ namespace EDX
 			const int strideHeight, const int strideWidth,
 			Tensorf& outTensor)
 		{
-			int numThreads = outTensor.LinearSize();
+			int numThreads = pooledTensor.LinearSize();
 
 			const int blockDim = 256;
 			const int gridDim = (numThreads + blockDim - 1) / blockDim;

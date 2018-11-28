@@ -36,7 +36,9 @@ namespace EDX
 
 			Assertf(!X.Empty(), "Input data cannot be empty in fully connected layer.");
 
-			GetOutput() = Tensorf::Dot(X, weights) + bias;
+			Tensorf& output = GetOutput();
+			Tensorf::DotInplace(X, weights, &output);
+			output += bias;
 		}
 
 
@@ -55,9 +57,9 @@ namespace EDX
 			const int dim = inputValue.LinearSize() / inputValue.Shape(0);
 			Tensorf X = inputValue.GetWithShape(N, dim);
 
-			inputGrads = Tensorf::Dot(upperGrads, weights.GetTransposed());
-			weightsGrads = Tensorf::Dot(X.GetTransposed(), upperGrads);
-			biasesGrads = Tensorf::Sum(upperGrads, { 0 });
+			Tensorf::DotInplace(upperGrads, weights.GetTransposed(), &inputGrads);
+			Tensorf::DotInplace(X.GetTransposed(), upperGrads, &weightsGrads);
+			Tensorf::SumInplace(upperGrads, &biasesGrads, { 0 });
 
 			mInputs[0]->SetGradientIndex(0);
 			mInputs[1]->SetGradientIndex(1);

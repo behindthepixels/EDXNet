@@ -284,8 +284,7 @@ namespace EDX
 			const int padHeight = mPadding[0], padWidth = mPadding[1];
 			const int strideHeight = mStride[0], strideWidth = mStride[1];
 
-			Tensorf colBuffer;
-			colBuffer.Resize(channel * kernelHeight * kernelWidth, outputHeight * outputWidth);
+			mColBuffer.Resize(channel * kernelHeight * kernelWidth, outputHeight * outputWidth);
 
 			Tensorf kernelMatrix = kernels.GetWithShape(mNumFilter, channel * kernelHeight * kernelWidth);
 
@@ -296,10 +295,10 @@ namespace EDX
 					kernelHeight, kernelWidth,
 					padHeight, padWidth,
 					strideHeight, strideWidth,
-					colBuffer.Data());
+					mColBuffer.Data());
 
 				Tensorf slice = output.GetSlice(i).GetWithShape(mNumFilter, outputHeight * outputWidth);
-				Tensorf::DotInplace(kernelMatrix, colBuffer, &slice);
+				Tensorf::DotInplace(kernelMatrix, mColBuffer, &slice);
 
 				for (int c = 0; c < mNumFilter; c++)
 				{
@@ -340,19 +339,18 @@ namespace EDX
 			const int padHeight = mPadding[0], padWidth = mPadding[1];
 			const int strideHeight = mStride[0], strideWidth = mStride[1];
 
-			Tensorf colBuffer;
-			colBuffer.Resize(channel * kernelHeight * kernelWidth, convOutHeight * convOutWidth);
+			mColBuffer.Resize(channel * kernelHeight * kernelWidth, convOutHeight * convOutWidth);
 
 			Tensorf kernelMatrix = kernels.GetWithShape(mNumFilter, channel * kernelHeight * kernelWidth);
 
 			for (int i = 0; i < N; i++)
 			{
-				colBuffer.Clear();
+				mColBuffer.Clear();
 				Tensorf upperGradsSlice = upperGrads.GetSlice(i).GetWithShape(mNumFilter, convOutHeight * convOutWidth);
 
-				Tensorf::DotInplace(kernelMatrix.GetTransposed(), upperGradsSlice, &colBuffer);
+				Tensorf::DotInplace(kernelMatrix.GetTransposed(), upperGradsSlice, &mColBuffer);
 
-				InvokeCol2ImKernel(colBuffer.Data(), channel, height, width,
+				InvokeCol2ImKernel(mColBuffer.Data(), channel, height, width,
 					kernelHeight, kernelWidth,
 					padHeight, padWidth, 
 					strideHeight, strideWidth,
@@ -363,14 +361,14 @@ namespace EDX
 					kernelHeight, kernelWidth,
 					padHeight, padWidth,
 					strideHeight, strideWidth,
-					colBuffer.Data());
+					mColBuffer.Data());
 
 				Tensorf weightSlice = weightsGrads.GetWithShape(mNumFilter, channel * kernelHeight * kernelWidth);
-				weightSlice += Tensorf::Dot(upperGradsSlice, colBuffer.GetTransposed());
+				Tensorf::DotInplace(upperGradsSlice, mColBuffer.GetTransposed(), &weightSlice, 1.0f, 1.0f);
 			}
 
 			Tensorf& biasesGrads = GetOutput(2);
-			biasesGrads = Tensorf::Sum(upperGrads, { 0, 2, 3 });
+			Tensorf::SumInplace(upperGrads, &biasesGrads, { 0, 2, 3 });
 
 			mInputs[0]->SetGradientIndex(0);
 			mInputs[1]->SetGradientIndex(1);

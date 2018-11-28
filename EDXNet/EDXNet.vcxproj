@@ -74,6 +74,7 @@
     <CudaCompile Include="Operators\Pooling.cu" />
     <CudaCompile Include="Operators\Predictor.cu" />
     <CudaCompile Include="Operators\Relu.cu" />
+    <CudaCompile Include="Operators\Softmax.cu" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{A71B6E17-EABD-4259-8F72-B5222FB6FF1C}</ProjectGuid>
@@ -154,6 +155,7 @@
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <AdditionalOptions>-Xcudafe --diag_suppress=useless_type_qualifier_on_return_type -Xcudafe --diag_suppress=bad_friend_decl -Xcudafe --diag_suppress=extra_semicolon -Xcudafe --diag_suppress=expr_not_object_pointer %(AdditionalOptions)</AdditionalOptions>
+      <CodeGeneration>compute_52,sm_52</CodeGeneration>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -182,6 +184,7 @@
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <AdditionalOptions>-Xcudafe --diag_suppress=useless_type_qualifier_on_return_type -Xcudafe --diag_suppress=bad_friend_decl -Xcudafe --diag_suppress=extra_semicolon -Xcudafe --diag_suppress=expr_not_object_pointer %(AdditionalOptions)</AdditionalOptions>
+      <CodeGeneration>compute_52,sm_52</CodeGeneration>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -214,6 +217,7 @@
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <AdditionalOptions>-Xcudafe --diag_suppress=useless_type_qualifier_on_return_type -Xcudafe --diag_suppress=bad_friend_decl -Xcudafe --diag_suppress=extra_semicolon -Xcudafe --diag_suppress=expr_not_object_pointer %(AdditionalOptions)</AdditionalOptions>
+      <CodeGeneration>compute_52,sm_52</CodeGeneration>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -246,6 +250,7 @@
     <CudaCompile>
       <TargetMachinePlatform>64</TargetMachinePlatform>
       <AdditionalOptions>-Xcudafe --diag_suppress=useless_type_qualifier_on_return_type -Xcudafe --diag_suppress=bad_friend_decl -Xcudafe --diag_suppress=extra_semicolon -Xcudafe --diag_suppress=expr_not_object_pointer %(AdditionalOptions)</AdditionalOptions>
+      <CodeGeneration>compute_52,sm_52</CodeGeneration>
     </CudaCompile>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

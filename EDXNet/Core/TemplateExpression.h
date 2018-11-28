@@ -53,6 +53,18 @@ struct TBinaryExp : public TExp<TBinaryExp<TOp, TLhs, TRhs>>
 	{
 	}
 
+	TBinaryExp(const TBinaryExp& _rhs)
+		: lhs(_rhs.lhs.Self())
+		, rhs(_rhs.rhs.Self())
+	{
+	}
+
+	TBinaryExp(TBinaryExp&& _rhs)
+		: lhs(Move(_rhs.lhs.Self()))
+		, rhs(Move(_rhs.rhs.Self()))
+	{
+	}
+
 	// evaluation function, evaluate this expression at position i
 	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
 	{
@@ -148,7 +160,17 @@ struct TUnaryExp : public TExp<TUnaryExp<TOp, TParam>>
 	const TParam param;
 
 	TUnaryExp(const TParam& _param)
-		: param(_param)
+		: param(_param.Self())
+	{
+	}
+
+	TUnaryExp(const TUnaryExp& _rhs)
+		: param(_rhs.param.Self())
+	{
+	}
+
+	TUnaryExp(TUnaryExp&& _rhs)
+		: param(Move(_rhs.param.Self()))
 	{
 	}
 

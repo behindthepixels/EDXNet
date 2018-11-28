@@ -230,6 +230,45 @@ void TestPoolingCUDA()
 	NeuralNet::Release();
 }
 
+
+void TestSoftmaxCUDA()
+{
+	const int numClasses = 10;
+	const int numInputs = 50;
+	Tensorf dataX = Scalar(0.001f) * Tensorf::RandomNormalDistribution(1.0, numInputs, numClasses);
+	Tensorf dataY = Tensorf::RandomInt(numClasses, numInputs);
+
+	Symbol* x = NeuralNet::Create<Variable>(dataX);
+	Symbol* y = NeuralNet::Create<Constant>(dataY);
+	Symbol* softmax = NeuralNet::Create<Softmax>(x, y);
+
+	NeuralNet net(softmax, true);
+
+	Array<Symbol*> symbolsToEvaluate = net.GetGradientSymbols({ x });
+	symbolsToEvaluate.Add(softmax); // Add loss layer
+
+	net.Execute(symbolsToEvaluate);
+
+	Tensorf result = softmax->GetOutput();
+	Tensorf correctResult = 2.3f;
+
+	std::cout << Tensorf::Sum(Tensorf::Abs(result - correctResult)) << "\n";
+
+	Tensorf& dx = symbolsToEvaluate[0]->GetOutput(0);
+
+	Tensorf upperGrads = Tensorf::Ones(result.Shape());
+	Tensorf dxNumerical = NumericalGradientEval([&]() -> Tensorf
+		{
+			net.Execute({ softmax });
+			return softmax->GetOutput();
+		},
+		x, upperGrads);
+
+	std::cout << Tensorf::Sum(Tensorf::Abs(dx - dxNumerical)) << "\n";
+
+	NeuralNet::Release();
+}
+
 void TestCUDA()
 {
 	{
@@ -284,4 +323,5 @@ void TestCUDA()
 	TestConvolutionCUDA();
 	TestReluCUDA();
 	TestPoolingCUDA();
+	TestSoftmaxCUDA();
 }

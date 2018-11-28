@@ -368,23 +368,22 @@ namespace EDX
 
 			TENSOR_INLINE bool IterateIndex(TensorShape& index, const TensorShape& axises /*Axises to iterate through*/) const
 			{
-				for (int i = mShape.Size() - 1; i >= 0; i--)
+				for (int i = axises.Size() - 1; i >= 0; i--)
 				{
-					if (!axises.Contains(i))
-						continue;
+					int axis = axises[i];
 
-					index[i]++;
+					index[axis]++;
 
-					if (index[i] < mShape[i])
+					if (index[axis] < mShape[axis])
 					{
 						break;
 					}
 					else
 					{
-						if (i == axises[0])
+						if (i == 0)
 							return false;
 
-						index[i] = 0;
+						index[axis] = 0;
 					}
 				}
 
@@ -781,6 +780,8 @@ namespace EDX
 					InitListNestedCopy(pIter, initList);
 
 					cudaMemcpy(Data(), pTempData, LinearSize() * sizeof(T), cudaMemcpyHostToDevice);
+
+					Memory::SafeDeleteArray(pTempData);
 				}
 			}
 
@@ -1360,14 +1361,12 @@ namespace EDX
 				Assertf(!(leftShape.Size() == 2 && leftShape[1] != rightShape[0]), "Dimension mismatch for tensor multiply.");
 
 				Tensor<T, TDeviceType> ret;
-				ret.Resize(leftShape[0], rightShape[1]);
-
 				DotInplace(lhs, rhs, &ret);
 
 				return ret;
 			}
 
-			static void DotInplace(const Tensor<T, TDeviceType>& lhs, const Tensor<T, TDeviceType>& rhs, Tensor<T, TDeviceType>* pResult)
+			static void DotInplace(const Tensor<T, TDeviceType>& lhs, const Tensor<T, TDeviceType>& rhs, Tensor<T, TDeviceType>* pResult, const float alpha = 1.0f, const float beta = 0.0f)
 			{
 				const TensorShape& leftShape = lhs.Shape();
 				const TensorShape& rightShape = rhs.Shape();
@@ -1377,6 +1376,8 @@ namespace EDX
 
 				Assertf(!(leftShape.Size() == 2 && leftShape[1] != rightShape[0]), "Dimension mismatch for tensor multiply.");
 
+				pResult->Resize(leftShape[0], rightShape[1]);
+
 				if (TDeviceType == CPU)
 				{
 					cblas_sgemm(CblasRowMajor,
@@ -1385,20 +1386,17 @@ namespace EDX
 						leftShape[0],
 						rightShape[1],
 						leftShape[1],
-						1.0f,
+						alpha,
 						lhs.Data(),
 						lhs.IsTransposed() ? lhs.Shape(0) : lhs.Shape(1),
 						rhs.Data(),
 						rhs.IsTransposed() ? rhs.Shape(0) : rhs.Shape(1),
-						0.0f,
+						beta,
 						pResult->Data(),
 						pResult->Shape(1));
 				}
 				else if (TDeviceType == GPU)
 				{
-					const float alpha = 1.0f;
-					const float beta = 0.0f;
-
 					cublasSgemm(Cublas::GetHandle(),
 						rhs.IsTransposed() ? CUBLAS_OP_T : CUBLAS_OP_N,
 						lhs.IsTransposed() ? CUBLAS_OP_T : CUBLAS_OP_N,
@@ -1607,6 +1605,22 @@ namespace EDX
 			static Tensor<T, TDeviceType> Max(const Tensor<T, TDeviceType>& inTensor, const TensorShape& axises = { -1 }, const bool keepDim = false)
 			{
 				return ProjectionOp(inTensor, axises, keepDim, Algorithm::Max<>(), T(Math::EDX_NEG_INFINITY));
+			}
+
+
+			static void SumInplace(const Tensor<T, TDeviceType>& inTensor, Tensor<T, TDeviceType>* pResult, const TensorShape& axises = { -1 }, const bool keepDim = false)
+			{
+				ProjectionOpInplace(inTensor, axises, keepDim, Algorithm::Plus<>(), T(0), pResult);
+			}
+
+			static void ProductInplace(const Tensor<T, TDeviceType>& inTensor, Tensor<T, TDeviceType>* pResult, const TensorShape& axises = { -1 })
+			{
+				ProjectionOpInplace(inTensor, axises, keepDim, Algorithm::Multiply<>(), T(1), pResult);
+			}
+
+			static void MaxInplace(const Tensor<T, TDeviceType>& inTensor, Tensor<T, TDeviceType>* pResult, const TensorShape& axises = { -1 }, const bool keepDim = false)
+			{
+				ProjectionOpInplace(inTensor, axises, keepDim, Algorithm::Max<>(), T(Math::EDX_NEG_INFINITY), pResult);
 			}
 
 			static Tensor<T, TDeviceType> Mean(const Tensor<T, TDeviceType>& X, const TensorShape& axises = { -1 }, const bool keepDim = false)
@@ -1863,6 +1877,82 @@ namespace EDX
 				}
 
 				return ret;
+			}
+
+			template<typename Op>
+			static void ProjectionOpInplace(const Tensor<T, TDeviceType>& lhs, const TensorShape& axises, const bool keepDim, Op op, T initVal, Tensor<T, TDeviceType>* pResult)
+			{
+				if (axises.Size() == 1 && axises[0] == -1)
+				{
+					if (TDeviceType == CPU)
+					{
+						*pResult = { Algorithm::Accumulate(lhs, initVal, op) };
+					}
+					else if (TDeviceType == GPU)
+					{
+#ifdef __CUDACC__
+						T* reduced = InvokeReduce(lhs.Data(), lhs.LinearSize(), initVal, op);
+						pResult->MoveDevicePtr(reduced, { 1 });
+#else
+						AssertNoEntry();
+#endif
+					}
+				}
+
+				const TensorShape& inShape = lhs.Shape();
+				TensorShape projShape;
+				TensorShape projShapeKeepDim;
+				for (int i = 0; i < inShape.Size(); i++)
+				{
+					if (!keepDim)
+					{
+						if (!axises.Contains(i))
+							projShape.Add(inShape[i]);
+					}
+					else
+					{
+						if (axises.Contains(i))
+							projShape.Add(1);
+						else
+							projShape.Add(inShape[i]);
+					}
+
+					if (axises.Contains(i))
+						projShapeKeepDim.Add(1);
+					else
+						projShapeKeepDim.Add(inShape[i]);
+				}
+
+				if (projShape.Empty())
+					projShape.Add(1);
+
+				if (projShapeKeepDim.Empty())
+					projShapeKeepDim.Add(1);
+
+				TensorParams tensorParamsKeepDim;
+				tensorParamsKeepDim.Resize(projShapeKeepDim);
+
+				if (TDeviceType == CPU)
+				{
+					pResult->Assign(initVal, TensorShape(projShape));
+
+					parallel_for(0, (int)tensorParamsKeepDim.LinearSize(), [&](int i)
+					{
+						TensorShape projIndex = tensorParamsKeepDim.Index(i);
+
+						do
+						{
+							(*pResult)[i] = op((*pResult)[i], lhs(projIndex));
+						} while (lhs.IterateIndex(projIndex, axises));
+					});
+				}
+				else if (TDeviceType == GPU)
+				{
+					pResult->Resize(projShape);
+#ifdef __CUDACC__
+					InvokeTensorProjectionOp(*pResult, lhs, tensorParamsKeepDim, axises, op, initVal);
+#endif
+				}
 			}
 
 	private:

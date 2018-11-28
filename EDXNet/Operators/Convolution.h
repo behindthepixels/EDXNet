@@ -47,6 +47,8 @@ namespace EDX
 
 
 		private:
+			Tensorf mColBuffer;
+
 			TensorShape mKernelSize;
 			int mNumFilter;
 			TensorShape mStride;
@@ -88,6 +90,8 @@ namespace EDX
 
 
 		private:
+			Tensorf mColBuffer;
+
 			TensorShape mKernelSize;
 			int mNumFilter;
 			TensorShape mStride;

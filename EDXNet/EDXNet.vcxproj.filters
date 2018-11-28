@@ -108,9 +108,6 @@
     <ClInclude Include="Core\TensorKernels.cuh">
       <Filter>Source Files\Core</Filter>
     </ClInclude>
-    <ClInclude Include="Operators\Pooling.cpp">
-      <Filter>Source Files\Operators</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Core\NeuralNet.cpp">
@@ -155,6 +152,9 @@
     <ClCompile Include="Operators\BatchNormalization.cpp">
       <Filter>Source Files\Operators</Filter>
     </ClCompile>
+    <ClCompile Include="Operators\Pooling.cpp">
+      <Filter>Source Files\Operators</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Natvis Include="TensorVis.natvis">
@@ -175,6 +175,9 @@
       <Filter>Source Files\Operators</Filter>
     </CudaCompile>
     <CudaCompile Include="Operators\Predictor.cu">
+      <Filter>Source Files\Operators</Filter>
+    </CudaCompile>
+    <CudaCompile Include="Operators\Softmax.cu">
       <Filter>Source Files\Operators</Filter>
     </CudaCompile>
   </ItemGroup>
