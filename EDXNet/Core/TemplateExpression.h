@@ -17,6 +17,8 @@ struct TScalarExp : public TExp<TScalarExp<T>>
 {
 	const T val;
 
+	mutable TensorInternal<float, CPU> output;
+
 	TScalarExp(const T& _val)
 		: val(_val)
 	{
@@ -25,11 +27,13 @@ struct TScalarExp : public TExp<TScalarExp<T>>
 	// evaluation function, evaluate this expression at position i
 	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
 	{
+		output[0] = val;
 		return val;
 	}
 
 	__forceinline TensorShape Shape() const
 	{
+		output.Resize(1);
 		return{ 1 };
 	}
 };
@@ -46,6 +50,8 @@ struct TBinaryExp : public TExp<TBinaryExp<TOp, TLhs, TRhs>>
 {
 	const TLhs lhs;
 	const TRhs rhs;
+
+	mutable TensorInternal<float, CPU> output;
 
 	TBinaryExp(const TLhs& _lhs, const TRhs& _rhs)
 		: lhs(_lhs.Self())
@@ -68,12 +74,16 @@ struct TBinaryExp : public TExp<TBinaryExp<TOp, TLhs, TRhs>>
 	// evaluation function, evaluate this expression at position i
 	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
 	{
-		return TOp::Exec(lhs.Eval(i, broadcastIndex), rhs.Eval(i, broadcastIndex));
+		float val = TOp::Exec(lhs.Eval(i, broadcastIndex), rhs.Eval(i, broadcastIndex));
+		output.BoardcastSet(val, i, broadcastIndex);
+		return val;
 	}
 
 	__forceinline TensorShape Shape() const
 	{
-		return BroadcastShape(lhs.Shape(), rhs.Shape());
+		TensorShape shape = BroadcastShape(lhs.Shape(), rhs.Shape());
+		output.Resize(shape);
+		return shape;
 	}
 };
 
@@ -159,6 +169,8 @@ struct TUnaryExp : public TExp<TUnaryExp<TOp, TParam>>
 {
 	const TParam param;
 
+	mutable TensorInternal<float, CPU> output;
+
 	TUnaryExp(const TParam& _param)
 		: param(_param.Self())
 	{
@@ -177,11 +189,14 @@ struct TUnaryExp : public TExp<TUnaryExp<TOp, TParam>>
 	// evaluation function, evaluate this expression at position i
 	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
 	{
-		return TOp::Exec(param.Eval(i, broadcastIndex));
+		float val = TOp::Exec(param.Eval(i, broadcastIndex));
+		output.BoardcastSet(val, i, broadcastIndex);
+		return val;
 	}
 
 	__forceinline TensorShape Shape() const
 	{
+		output.Resize(param.Shape());
 		return param.Shape();
 	}
 };
@@ -283,6 +298,8 @@ struct TConstantExp : public TExp<TConstantExp>
 	float val;
 	TensorShape shape;
 
+	mutable TensorInternal<float, CPU> output;
+
 	TConstantExp(const float _val, const TensorShape& _shape)
 		: val(_val)
 		, shape(_shape)
@@ -298,11 +315,13 @@ struct TConstantExp : public TExp<TConstantExp>
 	// evaluation function, evaluate this expression at position i
 	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
 	{
+		output.BoardcastSet(val, i, broadcastIndex);
 		return val;
 	}
 
 	__forceinline TensorShape Shape() const
 	{
+		output.Resize(shape);
 		return shape;
 	}
 };

@@ -588,8 +588,12 @@ void main()
 
 	//TestMattingLaplacian();
 
-	TestCUDA();
+	//TestCUDA();
 
+	Tensorf A = { 1,2,3,4,5,8,3,1,4 };
+	Tensorf B = NestedInitializerList<float, 2>({ {1},{2},{3},{4},{5} });
+	auto exp = A + B + A + A * B;
+	Tensorf C = exp;
 
 	Assertf(!_CrtDumpMemoryLeaks(), "Memory leak detected. See debug output for details");
 }

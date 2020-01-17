@@ -506,12 +506,6 @@ namespace EDX
 			return ret;
 		}
 
-		#include "TemplateExpression.h"
-		
-#ifdef __CUDACC__
-		#include "TensorKernels.cuh"
-#endif
-
 		// Singleton for storing cublas handle
 		class Cublas
 		{
@@ -531,16 +525,15 @@ namespace EDX
 			CPU, GPU
 		};
 
-		template<class T, DeviceType TDeviceType = GPU>
-		class Tensor : public TExp<Tensor<T, TDeviceType>>
+		template<class T, DeviceType TDeviceType = CPU>
+		class TensorInternal
 		{
-		protected:
-			T* mpData;
+		public:
+			T* mpData = nullptr;
 			TensorParams mParams;
 			bool mbDataOwner = true;
 
 		public:
-
 			DeviceType GetDeviceType() const
 			{
 				return TDeviceType;
@@ -551,137 +544,6 @@ namespace EDX
 				return mbDataOwner;
 			}
 
-			Tensor()
-				: mpData(nullptr)
-				, mbDataOwner(true)
-			{
-			}
-
-			virtual ~Tensor()
-			{
-				Free();
-			}
-
-			Tensor(const Tensor& rhs)
-				: mpData(nullptr)
-			{
-				this->operator=(rhs);
-			}
-
-			Tensor(Tensor&& rhs)
-				: mpData(nullptr)
-			{
-				this->operator=(Move(rhs));
-			}
-
-			Tensor(const T& val)
-				: mpData(nullptr)
-			{
-				this->operator=(val);
-			}
-
-			template<DeviceType TDeviceType2>
-			Tensor(const Tensor<T, TDeviceType2>& rhs)
-				: mpData(nullptr)
-			{
-				Resize(rhs.Shape());
-
-				if (TDeviceType == CPU && rhs.GetDeviceType() == GPU)
-					cudaMemcpy(mpData, rhs.Data(), LinearSize() * sizeof(T), cudaMemcpyDeviceToHost);
-				else if (TDeviceType == GPU && rhs.GetDeviceType() == CPU)
-					cudaMemcpy(mpData, rhs.Data(), LinearSize() * sizeof(T), cudaMemcpyHostToDevice);
-
-				mbDataOwner = rhs.IsDataOwner();
-			}
-
-			Tensor& operator = (const Tensor& rhs)
-			{
-				Resize(rhs.Shape());
-
-				if (TDeviceType == CPU)
-					Memory::Memcpy(mpData, rhs.mpData, LinearSize() * sizeof(T));
-				else if (TDeviceType == GPU)
-					cudaMemcpy(mpData, rhs.mpData, LinearSize() * sizeof(T), cudaMemcpyDeviceToDevice);
-
-				mbDataOwner = rhs.mbDataOwner;
-				return *this;
-			}
-
-			//template<DeviceType TDeviceType2>
-			//void Assign(const Tensor<T, TDeviceType2>& rhs)
-			//{
-			//	Resize(rhs.Shape());
-
-			//	if (TDeviceType == CPU && rhs.GetDeviceType() == GPU)
-			//		cudaMemcpy(mpData, rhs.Data(), LinearSize() * sizeof(T), cudaMemcpyDeviceToHost);
-			//	else if (TDeviceType == GPU && rhs.GetDeviceType() == CPU)
-			//		cudaMemcpy(mpData, rhs.Data(), LinearSize() * sizeof(T), cudaMemcpyHostToDevice);
-
-			//	mReleaseData = rhs.GetReleaseData();
-			//}
-
-			Tensor& operator = (Tensor&& rhs)
-			{
-				Free();
-				mParams = rhs.mParams;
-				mpData = rhs.mpData;
-				mbDataOwner = rhs.mbDataOwner;
-				rhs.mpData = nullptr;
-				return *this;
-			}
-
-			Tensor& operator = (const T val)
-			{
-				if (LinearSize() != 1)
-				{
-					Free();
-					Resize(1);
-				}
-				if (TDeviceType == CPU)
-					*mpData = val;
-				else if (TDeviceType == GPU)
-					cudaMemcpy(mpData, &val, sizeof(T), cudaMemcpyHostToDevice);
-				mbDataOwner = true;
-				return *this;
-			}
-
-			const Tensor<T, TDeviceType> Self() const
-			{
-				return GetWithShape(Shape());
-			}
-
-			// ----------------------------------------------------------------
-			// Constructor and assignment override for template expression
-			// ----------------------------------------------------------------
-			template<typename EType>
-			Tensor(const TExp<EType>& rhs)
-				: mpData(nullptr)
-			{
-				this->operator=(rhs);
-			}
-
-			template<typename EType>
-			inline Tensor<T, TDeviceType>& operator = (const TExp<EType>& rhs)
-			{
-				const EType& src = rhs.Self();
-				Resize(src.Shape());
-
-				if (TDeviceType == CPU)
-				{
-					parallel_for(0u, (uint)LinearSize(), [&](int i)
-					{
-						mpData[i] = src.Eval(i, mParams);
-					});
-				}
-				else if (TDeviceType == GPU)
-				{
-#ifdef __CUDACC__
-					InvokeExecuteExpression(src, mpData, mParams);
-#endif
-				}
-
-				return *this;
-			}
 
 			TENSOR_INLINE T Eval(const int idx, const TensorParams& broadcastIndex) const
 			{
@@ -699,90 +561,20 @@ namespace EDX
 				return this->operator()(selfIndex);
 			}
 
-			Tensor(NestedInitializerList<T, 1> initList)
-				: mpData(nullptr)
+			TENSOR_INLINE void BoardcastSet(const T val, const int idx, const TensorParams& broadcastIndex)
 			{
-				this->operator=(initList);
-			}
+				TensorShape selfIndex;
+				selfIndex.Resize(Dim());
 
-			Tensor(NestedInitializerList<T, 2> initList)
-				: mpData(nullptr)
-			{
-				this->operator=(initList);
-			}
-
-			Tensor(NestedInitializerList<T, 3> initList)
-				: mpData(nullptr)
-			{
-				this->operator=(initList);
-			}
-
-			Tensor(NestedInitializerList<T, 4> initList)
-				: mpData(nullptr)
-			{
-				this->operator=(initList);
-			}
-
-			Tensor(NestedInitializerList<T, 5> initList)
-				: mpData(nullptr)
-			{
-				this->operator=(initList);
-			}
-
-			Tensor& operator = (NestedInitializerList<T, 1> initList)
-			{
-				NestedInitializerListHelper<1>(initList);
-
-				return *this;
-			}
-
-			Tensor& operator = (NestedInitializerList<T, 2> initList)
-			{
-				NestedInitializerListHelper<2>(initList);
-
-				return *this;
-			}
-
-			Tensor& operator = (NestedInitializerList<T, 3> initList)
-			{
-				NestedInitializerListHelper<3>(initList);
-
-				return *this;
-			}
-
-			Tensor& operator = (NestedInitializerList<T, 4> initList)
-			{
-				NestedInitializerListHelper<4>(initList);
-
-				return *this;
-			}
-
-			Tensor& operator = (NestedInitializerList<T, 5> initList)
-			{
-				NestedInitializerListHelper<5>(initList);
-
-				return *this;
-			}
-
-			template<int level>
-			void NestedInitializerListHelper(NestedInitializerList<T, level> initList)
-			{
-				Resize(DeriveShapeFromNestedInitList<TensorShape>(initList));
-
-				if (TDeviceType == CPU)
+				TensorShape index = broadcastIndex.Index(idx);
+				for (int j = 0; j < Dim(); j++)
 				{
-					InitListNestedCopy(Data(), initList);
+					selfIndex[j] = index[j + broadcastIndex.Shape().Size() - Dim()];
+					if (selfIndex[j] >= Shape(j))
+						selfIndex[j] = 0;
 				}
-				else if (TDeviceType == GPU)
-				{
-					T* pTempData = new T[LinearSize()];
-					T* pIter = pTempData;
-					InitListNestedCopy(pIter, initList);
 
-					cudaMemcpy(Data(), pTempData, LinearSize() * sizeof(T), cudaMemcpyHostToDevice);
-
-					Memory::SafeDeleteArray(pTempData);
-				}
+				Set(selfIndex, val);
 			}
 
 			template<typename... TShape>
@@ -814,6 +606,19 @@ namespace EDX
 				}
 			}
 
+			template<typename... Shape>
+			TensorInternal Reshape(Shape... shape)
+			{
+				mParams.Reshape(shape...);
+				return *this;
+			}
+
+			TensorInternal Reshape(const TensorShape& shape)
+			{
+				mParams.Reshape(shape);
+				return *this;
+			}
+
 			void Assign(const T* pData, const TensorShape& shape)
 			{
 				Resize(shape);
@@ -836,150 +641,6 @@ namespace EDX
 
 				for (int i = 0; i < LinearSize(); i++)
 					mpData[i] = val;
-			}
-
-			void MoveDevicePtr(T* pData, const TensorShape& shape)
-			{
-				Resize(shape);
-				mpData = pData;
-			}
-
-			template<typename... Shape>
-			Tensor Reshape(Shape... shape)
-			{
-				mParams.Reshape(shape...);
-				return *this;
-			}
-
-			Tensor Reshape(const TensorShape& shape)
-			{
-				mParams.Reshape(shape);
-				return *this;
-			}
-
-			Tensor GetTransposed(const TensorShape& transposeDim = {})
-			{
-				Tensor ret;
-				ret.mParams = mParams;
-				ret.mpData = mpData;
-				ret.mbDataOwner = false;
-
-				ret.mParams.Transpose(transposeDim);
-
-				return ret;
-			}
-
-			template<typename... Shape>
-			Tensor GetWithShape(Shape... shape)
-			{
-				static_assert(AllIntegralType<Shape...>::Value, "All parameters have to be integral type.");
-
-				return GetWithShape({ shape... });
-			}
-
-			Tensor GetWithShape(const TensorShape& shape)
-			{
-				Tensor ret;
-				ret.mParams = mParams;
-				ret.mParams.Reshape(shape);
-				ret.mpData = mpData;
-				ret.mbDataOwner = false;
-				return ret;
-			}
-
-			template<typename... Shape>
-			const Tensor GetWithShape(Shape... shape) const
-			{
-				static_assert(AllIntegralType<Shape...>::Value, "All parameters have to be integral type.");
-
-				return GetWithShape({ shape... });
-			}
-
-			const Tensor GetWithShape(const TensorShape& shape) const
-			{
-				Tensor ret;
-				ret.mParams = mParams;
-				ret.mParams.Reshape(shape);
-				ret.mpData = mpData;
-				ret.mbDataOwner = false;
-				return ret;
-			}
-
-			template<typename... Index>
-			Tensor GetSlice(Index... index)
-			{
-				static_assert(AllIntegralType<Index...>::Value, "All parameters have to be integral type.");
-
-				return GetSlice({ index... });
-			}
-
-			Tensor GetSlice(const TensorShape& index)
-			{
-				Tensor ret;
-
-				TensorShape filledIndex = index;
-				int numComponentToFill = Dim() - index.Size();
-				while (numComponentToFill--)
-				{
-					filledIndex.Add(0);
-				}
-
-				ret.mpData = &this->operator()(filledIndex);
-				ret.mParams = mParams.GetSliceIndex(index.Size());
-				ret.mbDataOwner = false;
-				return ret;
-			}
-
-
-			template<typename... Index>
-			const Tensor GetSlice(Index... index) const
-			{
-				static_assert(AllIntegralType<Index...>::Value, "All parameters have to be integral type.");
-
-				return GetSlice({ index... });
-			}
-
-			const Tensor GetSlice(const TensorShape& index) const
-			{
-				Tensor ret;
-
-				TensorShape filledIndex = index;
-				int numComponentToFill = Dim() - index.Size();
-				while (numComponentToFill--)
-				{
-					filledIndex.Add(0);
-				}
-
-				ret.mpData = (T*)&this->operator()(filledIndex);
-				ret.mParams = mParams.GetSliceIndex(index.Size());
-				ret.mbDataOwner = false;
-				return ret;
-			}
-
-			Tensor GetSection(const int from, const int to)
-			{
-				Assert(from < to);
-
-				Tensor ret;
-
-				ret.mpData = mpData + from * mParams.Stride(0);
-				ret.mParams = mParams.GetSectionIndex(to - from);
-				ret.mbDataOwner = false;
-
-				return ret;
-			}
-
-			const Tensor GetSection(const int from, const int to) const
-			{
-				Assert(from < to);
-
-				Tensor ret;
-
-				ret.mpData = mpData + from * mParams.Stride(0);
-				ret.mParams = mParams.GetSectionIndex(to - from);
-				ret.mbDataOwner = false;
-
-				return ret;
 			}
 
 			__forceinline bool IsTransposed() const
@@ -1167,6 +828,380 @@ namespace EDX
 					}
 					mpData = nullptr;
 				}
+			}
+
+			void MoveDevicePtr(T* pData, const TensorShape& shape)
+			{
+				Resize(shape);
+				mpData = pData;
+			}
+		};
+
+		#include "TemplateExpression.h"
+		
+#ifdef __CUDACC__
+		#include "TensorKernels.cuh"
+#endif
+
+		template<class T, DeviceType TDeviceType = CPU>
+		class Tensor : public TensorInternal<T, TDeviceType>, public TExp<Tensor<T, TDeviceType>>
+		{
+		public:
+
+			Tensor()
+			{
+				mpData = nullptr;
+				mbDataOwner = true;
+			}
+
+			virtual ~Tensor()
+			{
+				Free();
+			}
+
+			Tensor(const Tensor& rhs)
+			{
+				mpData = nullptr;
+				this->operator=(rhs);
+			}
+
+			Tensor(Tensor&& rhs)
+			{
+				mpData = nullptr;
+				this->operator=(Move(rhs));
+			}
+
+			Tensor(const T& val)
+			{
+				mpData = nullptr;
+				this->operator=(val);
+			}
+
+			template<DeviceType TDeviceType2>
+			Tensor(const Tensor<T, TDeviceType2>& rhs)
+			{
+				mpData = nullptr;
+				Resize(rhs.Shape());
+
+				if (TDeviceType == CPU && rhs.GetDeviceType() == GPU)
+					cudaMemcpy(mpData, rhs.Data(), LinearSize() * sizeof(T), cudaMemcpyDeviceToHost);
+				else if (TDeviceType == GPU && rhs.GetDeviceType() == CPU)
+					cudaMemcpy(mpData, rhs.Data(), LinearSize() * sizeof(T), cudaMemcpyHostToDevice);
+
+				mbDataOwner = rhs.IsDataOwner();
+			}
+
+			Tensor& operator = (const Tensor& rhs)
+			{
+				Resize(rhs.Shape());
+
+				if (TDeviceType == CPU)
+					Memory::Memcpy(mpData, rhs.mpData, LinearSize() * sizeof(T));
+				else if (TDeviceType == GPU)
+					cudaMemcpy(mpData, rhs.mpData, LinearSize() * sizeof(T), cudaMemcpyDeviceToDevice);
+
+				mbDataOwner = rhs.mbDataOwner;
+				return *this;
+			}
+
+			//template<DeviceType TDeviceType2>
+			//void Assign(const Tensor<T, TDeviceType2>& rhs)
+			//{
+			//	Resize(rhs.Shape());
+
+			//	if (TDeviceType == CPU && rhs.GetDeviceType() == GPU)
+			//		cudaMemcpy(mpData, rhs.Data(), LinearSize() * sizeof(T), cudaMemcpyDeviceToHost);
+			//	else if (TDeviceType == GPU && rhs.GetDeviceType() == CPU)
+			//		cudaMemcpy(mpData, rhs.Data(), LinearSize() * sizeof(T), cudaMemcpyHostToDevice);
+
+			//	mReleaseData = rhs.GetReleaseData();
+			//}
+
+			Tensor& operator = (Tensor&& rhs)
+			{
+				Free();
+				mParams = rhs.mParams;
+				mpData = rhs.mpData;
+				mbDataOwner = rhs.mbDataOwner;
+				rhs.mpData = nullptr;
+				return *this;
+			}
+
+			Tensor& operator = (const T val)
+			{
+				if (LinearSize() != 1)
+				{
+					Free();
+					Resize(1);
+				}
+				if (TDeviceType == CPU)
+					*mpData = val;
+				else if (TDeviceType == GPU)
+					cudaMemcpy(mpData, &val, sizeof(T), cudaMemcpyHostToDevice);
+				mbDataOwner = true;
+				return *this;
+			}
+
+			const Tensor<T, TDeviceType> Self() const
+			{
+				return GetWithShape(Shape());
+			}
+
+			// ----------------------------------------------------------------
+			// Constructor and assignment override for template expression
+			// ----------------------------------------------------------------
+			template<typename EType>
+			Tensor(const TExp<EType>& rhs)
+			{
+				mpData = nullptr;
+				this->operator=(rhs);
+			}
+
+			template<typename EType>
+			inline Tensor<T, TDeviceType>& operator = (const TExp<EType>& rhs)
+			{
+				const EType& src = rhs.Self();
+				Resize(src.Shape());
+
+				if (TDeviceType == CPU)
+				{
+					parallel_for(0u, (uint)LinearSize(), [&](int i)
+					{
+						mpData[i] = src.Eval(i, mParams);
+					});
+				}
+				else if (TDeviceType == GPU)
+				{
+#ifdef __CUDACC__
+					InvokeExecuteExpression(src, mpData, mParams);
+#endif
+				}
+
+				return *this;
+			}
+
+			Tensor(NestedInitializerList<T, 1> initList)
+			{
+				mpData = nullptr;
+				this->operator=(initList);
+			}
+
+			Tensor(NestedInitializerList<T, 2> initList)
+			{
+				mpData = nullptr;
+				this->operator=(initList);
+			}
+
+			Tensor(NestedInitializerList<T, 3> initList)
+			{
+				mpData = nullptr;
+				this->operator=(initList);
+			}
+
+			Tensor(NestedInitializerList<T, 4> initList)
+			{
+				mpData = nullptr;
+				this->operator=(initList);
+			}
+
+			Tensor(NestedInitializerList<T, 5> initList)
+			{
+				mpData = nullptr;
+				this->operator=(initList);
+			}
+
+			Tensor& operator = (NestedInitializerList<T, 1> initList)
+			{
+				NestedInitializerListHelper<1>(initList);
+
+				return *this;
+			}
+
+			Tensor& operator = (NestedInitializerList<T, 2> initList)
+			{
+				NestedInitializerListHelper<2>(initList);
+
+				return *this;
+			}
+
+			Tensor& operator = (NestedInitializerList<T, 3> initList)
+			{
+				NestedInitializerListHelper<3>(initList);
+
+				return *this;
+			}
+
+			Tensor& operator = (NestedInitializerList<T, 4> initList)
+			{
+				NestedInitializerListHelper<4>(initList);
+
+				return *this;
+			}
+
+			Tensor& operator = (NestedInitializerList<T, 5> initList)
+			{
+				NestedInitializerListHelper<5>(initList);
+
+				return *this;
+			}
+
+			template<int level>
+			void NestedInitializerListHelper(NestedInitializerList<T, level> initList)
+			{
+				Resize(DeriveShapeFromNestedInitList<TensorShape>(initList));
+
+				if (TDeviceType == CPU)
+				{
+					InitListNestedCopy(Data(), initList);
+				}
+				else if (TDeviceType == GPU)
+				{
+					T* pTempData = new T[LinearSize()];
+					T* pIter = pTempData;
+					InitListNestedCopy(pIter, initList);
+
+					cudaMemcpy(Data(), pTempData, LinearSize() * sizeof(T), cudaMemcpyHostToDevice);
+
+					Memory::SafeDeleteArray(pTempData);
+				}
+			}
+
+			template<typename... Shape>
+			Tensor Reshape(Shape... shape)
+			{
+				mParams.Reshape(shape...);
+				return *this;
+			}
+
+			Tensor Reshape(const TensorShape& shape)
+			{
+				mParams.Reshape(shape);
+				return *this;
+			}
+
+			Tensor GetTransposed(const TensorShape& transposeDim = {})
+			{
+				Tensor ret;
+				ret.mParams = mParams;
+				ret.mpData = mpData;
+				ret.mbDataOwner = false;
+
+				ret.mParams.Transpose(transposeDim);
+
+				return ret;
+			}
+
+			template<typename... Shape>
+			Tensor GetWithShape(Shape... shape)
+			{
+				static_assert(AllIntegralType<Shape...>::Value, "All parameters have to be integral type.");
+
+				return GetWithShape({ shape... });
+			}
+
+			Tensor GetWithShape(const TensorShape& shape)
+			{
+				Tensor ret;
+				ret.mParams = mParams;
+				ret.mParams.Reshape(shape);
+				ret.mpData = mpData;
+				ret.mbDataOwner = false;
+				return ret;
+			}
+
+			template<typename... Shape>
+			const Tensor GetWithShape(Shape... shape) const
+			{
+				static_assert(AllIntegralType<Shape...>::Value, "All parameters have to be integral type.");
+
+				return GetWithShape({ shape... });
+			}
+
+			const Tensor GetWithShape(const TensorShape& shape) const
+			{
+				Tensor ret;
+				ret.mParams = mParams;
+				ret.mParams.Reshape(shape);
+				ret.mpData = mpData;
+				ret.mbDataOwner = false;
+				return ret;
+			}
+
+			template<typename... Index>
+			Tensor GetSlice(Index... index)
+			{
+				static_assert(AllIntegralType<Index...>::Value, "All parameters have to be integral type.");
+
+				return GetSlice({ index... });
+			}
+
+			Tensor GetSlice(const TensorShape& index)
+			{
+				Tensor ret;
+
+				TensorShape filledIndex = index;
+				int numComponentToFill = Dim() - index.Size();
+				while (numComponentToFill--)
+				{
+					filledIndex.Add(0);
+				}
+
+				ret.mpData = &this->operator()(filledIndex);
+				ret.mParams = mParams.GetSliceIndex(index.Size());
+				ret.mbDataOwner = false;
+				return ret;
+			}
+
+
+			template<typename... Index>
+			const Tensor GetSlice(Index... index) const
+			{
+				static_assert(AllIntegralType<Index...>::Value, "All parameters have to be integral type.");
+
+				return GetSlice({ index... });
+			}
+
+			const Tensor GetSlice(const TensorShape& index) const
+			{
+				Tensor ret;
+
+				TensorShape filledIndex = index;
+				int numComponentToFill = Dim() - index.Size();
+				while (numComponentToFill--)
+				{
+					filledIndex.Add(0);
+				}
+
+				ret.mpData = (T*)&this->operator()(filledIndex);
+				ret.mParams = mParams.GetSliceIndex(index.Size());
+				ret.mbDataOwner = false;
+				return ret;
+			}
+
+			Tensor GetSection(const int from, const int to)
+			{
+				Assert(from < to);
+
+				Tensor ret;
+
+				ret.mpData = mpData + from * mParams.Stride(0);
+				ret.mParams = mParams.GetSectionIndex(to - from);
+				ret.mbDataOwner = false;
+
+				return ret;
+			}
+
+			const Tensor GetSection(const int from, const int to) const
+			{
+				Assert(from < to);
+
+				Tensor ret;
+
+				ret.mpData = mpData + from * mParams.Stride(0);
+				ret.mParams = mParams.GetSectionIndex(to - from);
+				ret.mbDataOwner = false;
+
+				return ret;
 			}
 
 			// ----------------------------------------------------------------
