@@ -591,7 +591,7 @@ void main()
 	//TestCUDA();
 
 	Tensorf A = { 1,2,3,4,5,8,3,1,4 };
-	Tensorf B = NestedInitializerList<float, 2>({ {1},{2},{3},{4},{5} });
+	Tensorf B = { {1},{2},{3},{4},{5} };
 	auto exp = A + B + A + A * B;
 	Tensorf C = exp;
 

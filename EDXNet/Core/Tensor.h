@@ -525,7 +525,9 @@ namespace EDX
 			CPU, GPU
 		};
 
-		template<class T, DeviceType TDeviceType = CPU>
+		#define DEFAULT_DEVICE CPU
+
+		template<class T, DeviceType TDeviceType = DEFAULT_DEVICE>
 		class TensorInternal
 		{
 		public:
@@ -835,6 +837,131 @@ namespace EDX
 				Resize(shape);
 				mpData = pData;
 			}
+
+			TensorInternal GetTransposed(const TensorShape& transposeDim = {})
+			{
+				TensorInternal ret;
+				ret.mParams = mParams;
+				ret.mpData = mpData;
+				ret.mbDataOwner = false;
+
+				ret.mParams.Transpose(transposeDim);
+
+				return ret;
+			}
+
+			template<typename... Shape>
+			TensorInternal GetWithShape(Shape... shape)
+			{
+				static_assert(AllIntegralType<Shape...>::Value, "All parameters have to be integral type.");
+
+				return GetWithShape({ shape... });
+			}
+
+			TensorInternal GetWithShape(const TensorShape& shape)
+			{
+				TensorInternal ret;
+				ret.mParams = mParams;
+				ret.mParams.Reshape(shape);
+				ret.mpData = mpData;
+				ret.mbDataOwner = false;
+				return ret;
+			}
+
+			template<typename... Shape>
+			const TensorInternal GetWithShape(Shape... shape) const
+			{
+				static_assert(AllIntegralType<Shape...>::Value, "All parameters have to be integral type.");
+
+				return GetWithShape({ shape... });
+			}
+
+			const TensorInternal GetWithShape(const TensorShape& shape) const
+			{
+				TensorInternal ret;
+				ret.mParams = mParams;
+				ret.mParams.Reshape(shape);
+				ret.mpData = mpData;
+				ret.mbDataOwner = false;
+				return ret;
+			}
+
+			template<typename... Index>
+			TensorInternal GetSlice(Index... index)
+			{
+				static_assert(AllIntegralType<Index...>::Value, "All parameters have to be integral type.");
+
+				return GetSlice({ index... });
+			}
+
+			TensorInternal GetSlice(const TensorShape& index)
+			{
+				TensorInternal ret;
+
+				TensorShape filledIndex = index;
+				int numComponentToFill = Dim() - index.Size();
+				while (numComponentToFill--)
+				{
+					filledIndex.Add(0);
+				}
+
+				ret.mpData = &this->operator()(filledIndex);
+				ret.mParams = mParams.GetSliceIndex(index.Size());
+				ret.mbDataOwner = false;
+				return ret;
+			}
+
+
+			template<typename... Index>
+			const TensorInternal GetSlice(Index... index) const
+			{
+				static_assert(AllIntegralType<Index...>::Value, "All parameters have to be integral type.");
+
+				return GetSlice({ index... });
+			}
+
+			const TensorInternal GetSlice(const TensorShape& index) const
+			{
+				TensorInternal ret;
+
+				TensorShape filledIndex = index;
+				int numComponentToFill = Dim() - index.Size();
+				while (numComponentToFill--)
+				{
+					filledIndex.Add(0);
+				}
+
+				ret.mpData = (T*)&this->operator()(filledIndex);
+				ret.mParams = mParams.GetSliceIndex(index.Size());
+				ret.mbDataOwner = false;
+				return ret;
+			}
+
+			TensorInternal GetSection(const int from, const int to)
+			{
+				Assert(from < to);
+
+				TensorInternal ret;
+
+				ret.mpData = mpData + from * mParams.Stride(0);
+				ret.mParams = mParams.GetSectionIndex(to - from);
+				ret.mbDataOwner = false;
+
+				return ret;
+			}
+
+			const TensorInternal GetSection(const int from, const int to) const
+			{
+				Assert(from < to);
+
+				TensorInternal ret;
+
+				ret.mpData = mpData + from * mParams.Stride(0);
+				ret.mParams = mParams.GetSectionIndex(to - from);
+				ret.mbDataOwner = false;
+
+				return ret;
+			}
 		};
 
 		#include "TemplateExpression.h"
@@ -866,6 +993,18 @@ namespace EDX
 			}
 
 			Tensor(Tensor&& rhs)
+			{
+				mpData = nullptr;
+				this->operator=(Move(rhs));
+			}
+
+			Tensor(const TensorInternal< T, TDeviceType>& rhs)
+			{
+				mpData = nullptr;
+				this->operator=(rhs);
+			}
+
+			Tensor(TensorInternal< T, TDeviceType>&& rhs)
 			{
 				mpData = nullptr;
 				this->operator=(Move(rhs));
@@ -918,6 +1057,29 @@ namespace EDX
 			//}
 
 			Tensor& operator = (Tensor&& rhs)
+			{
+				Free();
+				mParams = rhs.mParams;
+				mpData = rhs.mpData;
+				mbDataOwner = rhs.mbDataOwner;
+				rhs.mpData = nullptr;
+				return *this;
+			}
+
+			Tensor& operator = (const TensorInternal< T, TDeviceType>& rhs)
+			{
+				Resize(rhs.Shape());
+
+				if (TDeviceType == CPU)
+					Memory::Memcpy(mpData, rhs.mpData, LinearSize() * sizeof(T));
+				else if (TDeviceType == GPU)
+					cudaMemcpy(mpData, rhs.mpData, LinearSize() * sizeof(T), cudaMemcpyDeviceToDevice);
+
+				mbDataOwner = rhs.mbDataOwner;
+				return *this;
+			}
+
+			Tensor& operator = (TensorInternal<T, TDeviceType>&& rhs)
 			{
 				Free();
 				mParams = rhs.mParams;
@@ -1064,144 +1226,6 @@ namespace EDX
 
 					Memory::SafeDeleteArray(pTempData);
 				}
-			}
-
-			template<typename... Shape>
-			Tensor Reshape(Shape... shape)
-			{
-				mParams.Reshape(shape...);
-				return *this;
-			}
-
-			Tensor Reshape(const TensorShape& shape)
-			{
-				mParams.Reshape(shape);
-				return *this;
-			}
-
-			Tensor GetTransposed(const TensorShape& transposeDim = {})
-			{
-				Tensor ret;
-				ret.mParams = mParams;
-				ret.mpData = mpData;
-				ret.mbDataOwner = false;
-
-				ret.mParams.Transpose(transposeDim);
-
-				return ret;
-			}
-
-			template<typename... Shape>
-			Tensor GetWithShape(Shape... shape)
-			{
-				static_assert(AllIntegralType<Shape...>::Value, "All parameters have to be integral type.");
-
-				return GetWithShape({ shape... });
-			}
-
-			Tensor GetWithShape(const TensorShape& shape)
-			{
-				Tensor ret;
-				ret.mParams = mParams;
-				ret.mParams.Reshape(shape);
-				ret.mpData = mpData;
-				ret.mbDataOwner = false;
-				return ret;
-			}
-
-			template<typename... Shape>
-			const Tensor GetWithShape(Shape... shape) const
-			{
-				static_assert(AllIntegralType<Shape...>::Value, "All parameters have to be integral type.");
-
-				return GetWithShape({ shape... });
-			}
-
-			const Tensor GetWithShape(const TensorShape& shape) const
-			{
-				Tensor ret;
-				ret.mParams = mParams;
-				ret.mParams.Reshape(shape);
-				ret.mpData = mpData;
-				ret.mbDataOwner = false;
-				return ret;
-			}
-
-			template<typename... Index>
-			Tensor GetSlice(Index... index)
-			{
-				static_assert(AllIntegralType<Index...>::Value, "All parameters have to be integral type.");
-
-				return GetSlice({ index... });
-			}
-
-			Tensor GetSlice(const TensorShape& index)
-			{
-				Tensor ret;
-
-				TensorShape filledIndex = index;
-				int numComponentToFill = Dim() - index.Size();
-				while (numComponentToFill--)
-				{
-					filledIndex.Add(0);
-				}
-
-				ret.mpData = &this->operator()(filledIndex);
-				ret.mParams = mParams.GetSliceIndex(index.Size());
-				ret.mbDataOwner = false;
-				return ret;
-			}
-
-
-			template<typename... Index>
-			const Tensor GetSlice(Index... index) const
-			{
-				static_assert(AllIntegralType<Index...>::Value, "All parameters have to be integral type.");
-
-				return GetSlice({ index... });
-			}
-
-			const Tensor GetSlice(const TensorShape& index) const
-			{
-				Tensor ret;
-
-				TensorShape filledIndex = index;
-				int numComponentToFill = Dim() - index.Size();
-				while (numComponentToFill--)
-				{
-					filledIndex.Add(0);
-				}
-
-				ret.mpData = (T*)&this->operator()(filledIndex);
-				ret.mParams = mParams.GetSliceIndex(index.Size());
-				ret.mbDataOwner = false;
-				return ret;
-			}
-
-			Tensor GetSection(const int from, const int to)
-			{
-				Assert(from < to);
-
-				Tensor ret;
-
-				ret.mpData = mpData + from * mParams.Stride(0);
-				ret.mParams = mParams.GetSectionIndex(to - from);
-				ret.mbDataOwner = false;
-
-				return ret;
-			}
-
-			const Tensor GetSection(const int from, const int to) const
-			{
-				Assert(from < to);
-
-				Tensor ret;
-
-				ret.mpData = mpData + from * mParams.Stride(0);
-				ret.mParams = mParams.GetSectionIndex(to - from);
-				ret.mbDataOwner = false;
-
-				return ret;
 			}
 
 			// ----------------------------------------------------------------

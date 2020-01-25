@@ -17,7 +17,7 @@ struct TScalarExp : public TExp<TScalarExp<T>>
 {
 	const T val;
 
-	mutable TensorInternal<float, CPU> output;
+	mutable TensorInternal<float, DEFAULT_DEVICE> output;
 
 	TScalarExp(const T& _val)
 		: val(_val)
@@ -51,7 +51,7 @@ struct TBinaryExp : public TExp<TBinaryExp<TOp, TLhs, TRhs>>
 	const TLhs lhs;
 	const TRhs rhs;
 
-	mutable TensorInternal<float, CPU> output;
+	mutable TensorInternal<float, DEFAULT_DEVICE> output;
 
 	TBinaryExp(const TLhs& _lhs, const TRhs& _rhs)
 		: lhs(_lhs.Self())
@@ -169,7 +169,7 @@ struct TUnaryExp : public TExp<TUnaryExp<TOp, TParam>>
 {
 	const TParam param;
 
-	mutable TensorInternal<float, CPU> output;
+	mutable TensorInternal<float, DEFAULT_DEVICE> output;
 
 	TUnaryExp(const TParam& _param)
 		: param(_param.Self())
@@ -298,7 +298,7 @@ struct TConstantExp : public TExp<TConstantExp>
 	float val;
 	TensorShape shape;
 
-	mutable TensorInternal<float, CPU> output;
+	mutable TensorInternal<float, DEFAULT_DEVICE> output;
 
 	TConstantExp(const float _val, const TensorShape& _shape)
 		: val(_val)
