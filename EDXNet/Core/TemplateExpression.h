@@ -3,14 +3,6 @@
 // Template expression definition
 // This file should be included before Tensor class declaration in Tensor.h
 
-template<typename ExpType>
-struct TExp
-{
-	__forceinline const ExpType& Self() const
-	{
-		return *static_cast<const ExpType*>(this);
-	}
-};
 
 template<typename T>
 struct TScalarExp : public TExp<TScalarExp<T>>
@@ -306,3 +298,129 @@ struct TConstantExp : public TExp<TConstantExp>
 		return shape;
 	}
 };
+
+template<typename TLhs, typename TRhs>
+struct TDotExp : public TExp<TDotExp<TLhs, TRhs>>
+{
+	const TLhs lhs;
+	const TRhs rhs;
+
+	mutable Tensorf value;
+
+	TDotExp(const TLhs& _lhs, const TRhs& _rhs)
+		: lhs(_lhs.Self())
+		, rhs(_rhs.Self())
+	{
+	}
+
+	TDotExp(const TDotExp& _rhs)
+		: lhs(_rhs.lhs.Self())
+		, rhs(_rhs.rhs.Self())
+		, value(_rhs.value.Self())
+	{
+	}
+
+	TDotExp(TDotExp&& _rhs)
+		: lhs(Move(_rhs.lhs.Self()))
+		, rhs(Move(_rhs.rhs.Self()))
+		, value(Move(_rhs.value.Self()))
+	{
+	}
+
+	// evaluation function, evaluate this expression at position i
+	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
+	{
+		return value.Eval(i, broadcastIndex);
+	}
+
+	__forceinline TensorShape Shape() const
+	{
+		const TensorShape& leftShape = lhs.Shape();
+		const TensorShape& rightShape = rhs.Shape();
+
+		Assertf(leftShape.Size() == rightShape.Size(), "Number of dimensions has to match between left and right tensors in dot product.");
+		Assertf(leftShape.Size() <= 2, "Dot product only supports tensors less than 2 dimensions.");
+
+		Assertf(!(leftShape.Size() == 2 && leftShape[1] != rightShape[0]), "Dimension mismatch for tensor multiply.");
+
+		TensorShape shape = { leftShape[0], rightShape[1] };
+		value.Resize(shape);
+
+
+		Tensorf left = lhs;
+		Tensorf right = rhs;
+		value = Tensorf::Dot(left, right);
+
+		return shape;
+	}
+};
+
+template<typename TLhs, typename TRhs>
+inline TDotExp<TLhs, TRhs> DotExp(const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
+{
+	return TDotExp<TLhs, TRhs>(lhs.Self(), rhs.Self());
+}
+
+namespace TensorExpr
+{
+	template<typename TParam>
+	__forceinline TUnaryExp<ExpOp, TParam> Exp(const TExp<TParam>& param)
+	{
+		return ExponentExp(param);
+	}
+
+	template<typename TParam>
+	__forceinline TUnaryExp<SqrtOp, TParam> Sqrt(const TExp<TParam>& param)
+	{
+		return SqrtExp(param);
+	}
+
+	template<typename TParam>
+	__forceinline TUnaryExp<SquareOp, TParam> Square(const TExp<TParam>& param)
+	{
+		return SquareExp(param);
+	}
+
+	template<typename TParam>
+	__forceinline TUnaryExp<LogOp, TParam> Log(const TExp<TParam>& param)
+	{
+		return LogExp(param);
+	}
+
+	template<typename TParam>
+	__forceinline TUnaryExp<AbsOp, TParam> Abs(const TExp<TParam>& param)
+	{
+		return AbsExp(param);
+	}
+
+	template<typename TParam>
+	__forceinline TUnaryExp<ReluOp, TParam> ReluActivate(const TExp<TParam>& param)
+	{
+		return ReluActivateExp(param);
+	}
+
+	template<typename TLhs, typename TRhs>
+	__forceinline TBinaryExp<ReluGradOp, TLhs, TRhs> ReluGradient(const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
+	{
+		return ReluGradExp(lhs, rhs);
+	}
+
+	template<typename TLhs, typename TRhs>
+	__forceinline TDotExp<TLhs, TRhs> Dot(const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
+	{
+		return DotExp(lhs, rhs);
+	}
+
+	template<typename... Shape>
+	static TConstantExp Zeroes(Shape&&... shape)
+	{
+		return TConstantExp(0.0f, Forward<Shape>(shape)...);
+	}
+
+	template<typename... Shape>
+	static TConstantExp Ones(Shape&&... shape)
+	{
+
+		return TConstantExp(1.0f, Forward<Shape>(shape)...);
+	}
+}

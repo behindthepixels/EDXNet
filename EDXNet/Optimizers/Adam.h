@@ -42,11 +42,11 @@ namespace EDX
 			{
 				if (!mMapM.Contains(&x))
 				{
-					mMapM.Add(&x, Tensorf::Zeroes(x.Shape()));
+					mMapM.Add(&x, TensorExpr::Zeroes(x.Shape()));
 				}
 				if (!mMapV.Contains(&x))
 				{
-					mMapV.Add(&x, Tensorf::Zeroes(x.Shape()));
+					mMapV.Add(&x, TensorExpr::Zeroes(x.Shape()));
 				}
 
 				Tensorf& m = mMapM[&x];
@@ -57,7 +57,7 @@ namespace EDX
 				v = Scalar(mBeta2) * v + Scalar(1 - mBeta2) * (dx * dx);
 				Tensorf mt_hat = m / Scalar(1 - Math::Pow(mBeta1, mSteps));
 				Tensorf vt_hat = v / Scalar(1 - Math::Pow(mBeta2, mSteps));
-				x -= Scalar(mLearningRate) * mt_hat / (Tensorf::Sqrt(vt_hat + Scalar(mEpsilon)));
+				x -= Scalar(mLearningRate) * mt_hat / (TensorExpr::Sqrt(vt_hat + Scalar(mEpsilon)));
 			}
 		};
 	}

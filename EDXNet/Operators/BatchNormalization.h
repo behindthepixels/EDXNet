@@ -46,7 +46,7 @@ namespace EDX
 					Tensorf centeredX = X - mean;
 					Tensorf centeredX2 = centeredX * centeredX;
 					Tensorf variance = Tensorf::Sum(centeredX2, { 0 }) / Scalar(float(N));
-					Tensorf stdDiv = Tensorf::Sqrt(variance + Scalar(1e-5f));
+					Tensorf stdDiv = TensorExpr::Sqrt(variance + Scalar(1e-5f));
 					Tensorf invStdDiv = Tensorf(1.0f) / stdDiv;
 					Tensorf correctedX = centeredX * invStdDiv;
 
@@ -64,7 +64,7 @@ namespace EDX
 				}
 				else
 				{
-					Tensorf correctedX = (X - runningMean) / Tensorf::Sqrt(runningVar + Scalar(1e-4f));
+					Tensorf correctedX = (X - runningMean) / TensorExpr::Sqrt(runningVar + Scalar(1e-4f));
 					GetOutput(0) = scale * correctedX + bias;
 				}
 			}

@@ -19,7 +19,7 @@ namespace EDX
 				const Tensorf& inputValue = mInputs[0]->GetOutput();
 
 				Tensorf& ret = GetOutput();
-				ret = Tensorf::Ones(inputValue.Shape());
+				ret = TensorExpr::Ones(inputValue.Shape());
 			}
 
 			void Init()

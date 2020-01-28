@@ -18,7 +18,7 @@ namespace EDX
 			const Tensorf& inputValue = mInputs[0]->GetOutput();
 			const Tensorf& labels = mInputs[1]->GetOutput();
 
-			mProbs = Tensorf::Exp(inputValue - Tensorf::Max(inputValue, { 1 }, true));
+			mProbs = TensorExpr::Exp(inputValue - Tensorf::Max(inputValue, { 1 }, true));
 			mProbs /= Tensorf::Sum(mProbs, { 1 }, true);
 
 			const int N = inputValue.Shape(0);
@@ -41,7 +41,7 @@ namespace EDX
 
 			// Loss
 			Tensorf& output = GetOutput(0);
-			output = Scalar(-1.0f) * Tensorf::Sum(Tensorf::Log(mCorrectProbs)) / Scalar(N);
+			output = Scalar(-1.0f) * Tensorf::Sum(TensorExpr::Log(mCorrectProbs)) / Scalar(N);
 		}
 
 		__global__ void SoftmaxGradKernel(const Tensorf labels, Tensorf probs)
@@ -58,7 +58,7 @@ namespace EDX
 			const Tensorf& inputValue = mInputs[0]->GetOutput();
 			const Tensorf& labels = mInputs[1]->GetOutput();
 
-			mProbs = Tensorf::Exp(inputValue - Tensorf::Max(inputValue, { 1 }, true));
+			mProbs = TensorExpr::Exp(inputValue - Tensorf::Max(inputValue, { 1 }, true));
 			mProbs /= Tensorf::Sum(mProbs, { 1 }, true);
 
 			const int N = inputValue.Shape(0);

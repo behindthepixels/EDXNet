@@ -8,7 +8,7 @@ namespace EDX
 		{
 			const Tensorf& inputValue = mInputs[0]->GetOutput();
 
-			GetOutput() = Tensorf::ReluActivate(inputValue);
+			GetOutput() = TensorExpr::ReluActivate(inputValue);
 		}
 
 		void ReluGradient::Evaluate()
@@ -17,7 +17,7 @@ namespace EDX
 			const Tensorf& upperGrads = mInputs[1]->GetOutput();
 
 			Tensorf& output = GetOutput();
-			output = Tensorf::ReluGradient(upperGrads, inputValue);
+			output = TensorExpr::ReluGradient(upperGrads, inputValue);
 
 			mInputs[0]->SetGradientIndex(0);
 		}

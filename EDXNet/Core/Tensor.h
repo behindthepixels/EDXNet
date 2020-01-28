@@ -506,7 +506,15 @@ namespace EDX
 			return ret;
 		}
 
-		#include "TemplateExpression.h"
+
+		template<typename ExpType>
+		struct TExp
+		{
+			__forceinline const ExpType& Self() const
+			{
+				return *static_cast<const ExpType*>(this);
+			}
+		};
 		
 #ifdef __CUDACC__
 		#include "TensorKernels.cuh"
@@ -645,7 +653,7 @@ namespace EDX
 				return *this;
 			}
 
-			const Tensor<T, TDeviceType> Self() const
+			Tensor<T, TDeviceType> Self() const
 			{
 				return GetWithShape(Shape());
 			}
@@ -1305,19 +1313,6 @@ namespace EDX
 				return ArrayRange(0, stop, 1);
 			}
 
-			template<typename... Shape>
-			static TConstantExp Zeroes(Shape&&... shape)
-			{
-				return TConstantExp(0.0f, Forward<Shape>(shape)...);
-			}
-
-			template<typename... Shape>
-			static TConstantExp Ones(Shape&&... shape)
-			{
-
-				return TConstantExp(1.0f, Forward<Shape>(shape)...);
-			}
-
 			static Tensor<T, TDeviceType> Identity(const int N)
 			{
 				Tensor<T, TDeviceType> ret;
@@ -1549,49 +1544,6 @@ namespace EDX
 				return ret;
 			}
 
-
-			template<typename TParam>
-			static inline TUnaryExp<ExpOp, TParam> Exp(const TExp<TParam>& param)
-			{
-				return ExponentExp(param);
-			}
-
-			template<typename TParam>
-			static inline TUnaryExp<SqrtOp, TParam> Sqrt(const TExp<TParam>& param)
-			{
-				return SqrtExp(param);
-			}
-
-			template<typename TParam>
-			static inline TUnaryExp<SquareOp, TParam> Square(const TExp<TParam>& param)
-			{
-				return SquareExp(param);
-			}
-
-			template<typename TParam>
-			static inline TUnaryExp<LogOp, TParam> Log(const TExp<TParam>& param)
-			{
-				return LogExp(param);
-			}
-
-			template<typename TParam>
-			static inline TUnaryExp<AbsOp, TParam> Abs(const TExp<TParam>& param)
-			{
-				return AbsExp(param);
-			}
-
-			template<typename TParam>
-			static inline TUnaryExp<ReluOp, TParam> ReluActivate(const TExp<TParam>& param)
-			{
-				return ReluActivateExp(param);
-			}
-
-			template<typename TLhs, typename TRhs>
-			static inline TBinaryExp<ReluGradOp, TLhs, TRhs> ReluGradient(const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
-			{
-				return ReluGradExp(lhs, rhs);
-			}
-
 			static Tensor<T, TDeviceType> Sum(const Tensor<T, TDeviceType>& inTensor, const TensorShape& axises = { -1 }, const bool keepDim = false)
 			{
 				return ProjectionOp(inTensor, axises, keepDim, Algorithm::Plus<>(), T(0));
@@ -1640,7 +1592,7 @@ namespace EDX
 
 				Tensor<T, TDeviceType> variance = Tensorf::Mean(centeredX * centeredX, axises, keepDim);
 
-				return Sqrt(variance + Scalar(1e-5f));
+				return TensorExpr::Sqrt(variance + Scalar(1e-5f));
 			}
 
 			template<typename... Shape>
@@ -1970,5 +1922,7 @@ namespace EDX
 		using Tensorf = Tensor<float>;
 		using Tensord = Tensor<double>;
 		using Tensori = Tensor<int>;
+		
+		#include "TemplateExpression.h"
 	}
 }
