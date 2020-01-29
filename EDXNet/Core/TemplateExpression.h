@@ -51,7 +51,7 @@ struct TBinaryExp : public TExp<TBinaryExp<TOp, TLhs, TRhs>>
 	{
 	}
 
-	TBinaryExp(TBinaryExp&& _rhs)
+	TBinaryExp(const TBinaryExp&& _rhs)
 		: lhs(Move(_rhs.lhs.Self()))
 		, rhs(Move(_rhs.rhs.Self()))
 	{
@@ -316,14 +316,14 @@ struct TDotExp : public TExp<TDotExp<TLhs, TRhs>>
 	TDotExp(const TDotExp& _rhs)
 		: lhs(_rhs.lhs.Self())
 		, rhs(_rhs.rhs.Self())
-		, value(_rhs.value.Self())
+		, value(_rhs.value)
 	{
 	}
 
-	TDotExp(TDotExp&& _rhs)
+	TDotExp(const TDotExp&& _rhs)
 		: lhs(Move(_rhs.lhs.Self()))
 		, rhs(Move(_rhs.rhs.Self()))
-		, value(Move(_rhs.value.Self()))
+		, value(Move(_rhs.value))
 	{
 	}
 
@@ -344,12 +344,15 @@ struct TDotExp : public TExp<TDotExp<TLhs, TRhs>>
 		Assertf(!(leftShape.Size() == 2 && leftShape[1] != rightShape[0]), "Dimension mismatch for tensor multiply.");
 
 		TensorShape shape = { leftShape[0], rightShape[1] };
-		value.Resize(shape);
+		
+		if (value.Empty())
+		{
+			value.Resize(shape);
 
-
-		Tensorf left = lhs;
-		Tensorf right = rhs;
-		value = Tensorf::Dot(left, right);
+			Tensorf left = lhs;
+			Tensorf right = rhs;
+			value = Tensorf::Dot(left, right);
+		}
 
 		return shape;
 	}
@@ -367,8 +370,8 @@ struct TProjectExp : public TExp<TProjectExp<TOp, TOperand>>
 	const TOperand operand;
 	TOp op;
 	float initVal;
-	const TensorShape axises;
-	const bool keepDim;
+	TensorShape axises;
+	bool keepDim;
 
 	mutable Tensorf value;
 
@@ -383,7 +386,7 @@ struct TProjectExp : public TExp<TProjectExp<TOp, TOperand>>
 
 	TProjectExp(const TProjectExp& exp)
 		: operand(exp.operand.Self())
-		, value(exp.value.Self())
+		, value(exp.value)
 		, op(exp.op)
 		, initVal(exp.initVal)
 		, axises(exp.axises)
@@ -391,13 +394,13 @@ struct TProjectExp : public TExp<TProjectExp<TOp, TOperand>>
 	{
 	}
 
-	TProjectExp(TProjectExp&& exp)
+	TProjectExp(const TProjectExp&& exp)
 		: operand(Move(exp.operand.Self()))
-		, value(Move(exp.value.Self()))
+		, value(Move(exp.value))
 		, op(exp.op)
 		, initVal(exp.initVal)
-		, axises(Move(exp.axises))
-		, keepDim(Move(exp.keepDim))
+		, axises(exp.axises)
+		, keepDim(exp.keepDim)
 	{
 	}
 
@@ -409,8 +412,11 @@ struct TProjectExp : public TExp<TProjectExp<TOp, TOperand>>
 
 	__forceinline TensorShape Shape() const
 	{
-		Tensorf operandVal = operand;
-		value = Tensorf::ProjectionOp<TOp>(operandVal, axises, keepDim, op, initVal);
+		if (value.Empty())
+		{
+			Tensorf operandVal = operand;
+			value = Tensorf::ProjectionOp<TOp>(operandVal, axises, keepDim, op, initVal);
+		}
 
 		return value.Shape();
 	}

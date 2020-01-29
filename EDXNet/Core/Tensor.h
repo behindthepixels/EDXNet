@@ -553,7 +553,7 @@ namespace EDX
 		protected:
 			T* mpData;
 			TensorParams mParams;
-			bool mbDataOwner = true;
+			mutable bool mbDataOwner = true;
 
 		public:
 
@@ -585,6 +585,12 @@ namespace EDX
 			}
 
 			Tensor(Tensor&& rhs)
+				: mpData(nullptr)
+			{
+				this->operator=(Move(rhs));
+			}
+
+			Tensor(const Tensor&& rhs)
 				: mpData(nullptr)
 			{
 				this->operator=(Move(rhs));
@@ -642,7 +648,17 @@ namespace EDX
 				mParams = rhs.mParams;
 				mpData = rhs.mpData;
 				mbDataOwner = rhs.mbDataOwner;
-				rhs.mpData = nullptr;
+				rhs.mbDataOwner = false;
+				return *this;
+			}
+
+			Tensor& operator = (const Tensor&& rhs)
+			{
+				Free();
+				mParams = rhs.mParams;
+				mpData = rhs.mpData;
+				mbDataOwner = rhs.mbDataOwner;
+				rhs.mbDataOwner = false;
 				return *this;
 			}
 

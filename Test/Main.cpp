@@ -588,9 +588,6 @@ void main()
 
 	//TestMattingLaplacian();
 
-	Tensorf A = Tensorf::LinSpace(0, 10, 10);
-	Tensorf sum = TensorExpr::StandardDeviation(A);
-
 	TestCUDA();
 
 
