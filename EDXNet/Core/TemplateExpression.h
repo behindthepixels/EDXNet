@@ -361,6 +361,80 @@ inline TDotExp<TLhs, TRhs> DotExp(const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
 	return TDotExp<TLhs, TRhs>(lhs.Self(), rhs.Self());
 }
 
+template<typename TOp, typename TOperand>
+struct TProjectExp : public TExp<TProjectExp<TOp, TOperand>>
+{
+	const TOperand operand;
+	TOp op;
+	float initVal;
+	const TensorShape axises;
+	const bool keepDim;
+
+	mutable Tensorf value;
+
+	TProjectExp(const TOperand& _operand, TOp _op, const float _initVal, const TensorShape& _axises, const bool& _keepDim)
+		: operand(_operand.Self())
+		, op(_op)
+		, initVal(_initVal)
+		, axises(_axises)
+		, keepDim(_keepDim)
+	{
+	}
+
+	TProjectExp(const TProjectExp& exp)
+		: operand(exp.operand.Self())
+		, value(exp.value.Self())
+		, op(exp.op)
+		, initVal(exp.initVal)
+		, axises(exp.axises)
+		, keepDim(exp.keepDim)
+	{
+	}
+
+	TProjectExp(TProjectExp&& exp)
+		: operand(Move(exp.operand.Self()))
+		, value(Move(exp.value.Self()))
+		, op(exp.op)
+		, initVal(exp.initVal)
+		, axises(Move(exp.axises))
+		, keepDim(Move(exp.keepDim))
+	{
+	}
+
+	// evaluation function, evaluate this expression at position i
+	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
+	{
+		return value.Eval(i, broadcastIndex);
+	}
+
+	__forceinline TensorShape Shape() const
+	{
+		Tensorf operandVal = operand;
+		value = Tensorf::ProjectionOp<TOp>(operandVal, axises, keepDim, op, initVal);
+
+		return value.Shape();
+	}
+};
+
+
+template<typename TOperand>
+inline TProjectExp<Algorithm::Plus<>, TOperand> SumExp(const TExp<TOperand>& operand, const TensorShape& axises = { -1 }, const bool keepDim = false)
+{
+	return TProjectExp<Algorithm::Plus<>, TOperand>(operand.Self(), Algorithm::Plus<>(), 0.0f, axises, keepDim);
+}
+
+template<typename TOperand>
+inline TProjectExp<Algorithm::Multiply<>, TOperand> ProductExp(const TExp<TOperand>& operand, const TensorShape& axises = { -1 }, const bool keepDim = false)
+{
+	return TProjectExp<Algorithm::Multiply<>, TOperand>(operand.Self(), Algorithm::Multiply<>(), 1.0f, axises, keepDim);
+}
+
+template<typename TOperand>
+inline TProjectExp<Algorithm::Max<>, TOperand> MaxExp(const TExp<TOperand>& operand, const TensorShape& axises = { -1 }, const bool keepDim = false)
+{
+	return TProjectExp<Algorithm::Max<>, TOperand>(operand.Self(), Algorithm::Max<>(), float(Math::EDX_NEG_INFINITY), axises, keepDim);
+}
+
 namespace TensorExpr
 {
 	template<typename TParam>
@@ -411,6 +485,53 @@ namespace TensorExpr
 		return DotExp(lhs, rhs);
 	}
 
+	template<typename TOperand>
+	__forceinline TProjectExp<Algorithm::Plus<>, TOperand> Sum(const TExp<TOperand>& param, const TensorShape& axises = { -1 }, const bool keepDim = false)
+	{
+		return SumExp(param, axises, keepDim);
+	}
+
+	template<typename TOperand>
+	__forceinline TProjectExp<Algorithm::Multiply<>, TOperand> Product(const TExp<TOperand>& param, const TensorShape& axises = { -1 }, const bool keepDim = false)
+	{
+		return ProductExp(param, axises, keepDim);
+	}
+
+	template<typename TOperand>
+	__forceinline TProjectExp<Algorithm::Max<>, TOperand> Max(const TExp<TOperand>& param, const TensorShape& axises = { -1 }, const bool keepDim = false)
+	{
+		return MaxExp(param, axises, keepDim);
+	}
+
+	template<typename TOperand>
+	__forceinline auto Mean(const TExp<TOperand>& x, const TensorShape& axises = { -1 }, const bool keepDim = false)
+	{
+		auto sum = Sum(x, axises, keepDim);
+
+		float invDivisor = sum.Self().Shape().LinearSize() / float(x.Self().Shape().LinearSize());
+		auto mean = sum * Scalar(invDivisor);
+
+		return mean;
+	}
+
+	template<typename TOperand>
+	__forceinline auto Variance(const TExp<TOperand>& x, const TensorShape& axises = { -1 }, const bool keepDim = false)
+	{
+		auto mean = Mean(x, axises, keepDim);
+		auto centeredX = x - mean;
+		auto variance = Mean(centeredX * centeredX, axises, keepDim);
+
+		return variance;
+	}
+
+	template<typename TOperand>
+	__forceinline auto StandardDeviation(const TExp<TOperand>& x, const TensorShape& axises = { -1 }, const bool keepDim = false)
+	{
+		auto variance = Variance(x, axises, keepDim);
+
+		return TensorExpr::Sqrt(variance + Scalar(1e-5f));
+	}
+
 	template<typename... Shape>
 	static TConstantExp Zeroes(Shape&&... shape)
 	{
@@ -420,7 +541,6 @@ namespace TensorExpr
 	template<typename... Shape>
 	static TConstantExp Ones(Shape&&... shape)
 	{
-
 		return TConstantExp(1.0f, Forward<Shape>(shape)...);
 	}
 }

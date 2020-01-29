@@ -166,6 +166,14 @@ namespace EDX
 
 				return false;
 			}
+			__forceinline int LinearSize() const
+			{
+				int prod = 1;
+				for (int i = 0; i < mSize; i++)
+					prod *= x[i];
+
+				return prod;
+			}
 
 			friend Stream& operator << (Stream& stream, TensorShape& A)
 			{
@@ -539,7 +547,7 @@ namespace EDX
 			CPU, GPU
 		};
 
-		template<class T, DeviceType TDeviceType = GPU>
+		template<class T, DeviceType TDeviceType = CPU>
 		class Tensor : public TExp<Tensor<T, TDeviceType>>
 		{
 		protected:
@@ -1701,7 +1709,7 @@ namespace EDX
 				ElementWiseBinaryOpInplace(*this, rhs, Algorithm::Divide<>());
 			}
 
-		private:
+		public:
 
 			template<typename Op>
 			static void ElementWiseBinaryOpInplace(Tensor<T, TDeviceType>& lhs, const Tensor<T, TDeviceType>& rhs, Op op)
