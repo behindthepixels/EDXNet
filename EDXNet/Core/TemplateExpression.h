@@ -15,7 +15,7 @@ struct TScalarExp : public TExp<TScalarExp<T>>
 	}
 
 	// evaluation function, evaluate this expression at position i
-	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
+	TENSOR_INLINE T Eval(const int i, const TensorParams& broadcastIndex) const
 	{
 		return val;
 	}
