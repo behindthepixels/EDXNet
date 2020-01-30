@@ -547,7 +547,7 @@ namespace EDX
 			CPU, GPU
 		};
 
-		template<class T, DeviceType TDeviceType = CPU>
+		template<class T, DeviceType TDeviceType = GPU>
 		class Tensor : public TExp<Tensor<T, TDeviceType>>
 		{
 		protected:
@@ -728,7 +728,23 @@ namespace EDX
 						selfIndex[j] = 0;
 				}
 
-				return this->operator()(selfIndex);
+				return this->operator[](selfIndex);
+			}
+
+			TENSOR_INLINE void Set(const int idx, const TensorParams& broadcastIndex, const T val)
+			{
+				TensorShape selfIndex;
+				selfIndex.Resize(Dim());
+
+				TensorShape index = broadcastIndex.Index(idx);
+				for (int j = 0; j < Dim(); j++)
+				{
+					selfIndex[j] = index[j + broadcastIndex.Shape().Size() - Dim()];
+					if (selfIndex[j] >= Shape(j))
+						selfIndex[j] = 0;
+				}
+
+				this->operator[](selfIndex) = val;
 			}
 
 			Tensor(NestedInitializerList<T, 1> initList)

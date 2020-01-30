@@ -39,6 +39,8 @@ struct TBinaryExp : public TExp<TBinaryExp<TOp, TLhs, TRhs>>
 	const TLhs lhs;
 	const TRhs rhs;
 
+	mutable Tensorf value;
+
 	TBinaryExp(const TLhs& _lhs, const TRhs& _rhs)
 		: lhs(_lhs.Self())
 		, rhs(_rhs.Self())
@@ -48,24 +50,31 @@ struct TBinaryExp : public TExp<TBinaryExp<TOp, TLhs, TRhs>>
 	TBinaryExp(const TBinaryExp& _rhs)
 		: lhs(_rhs.lhs.Self())
 		, rhs(_rhs.rhs.Self())
+		, value(_rhs.value)
 	{
 	}
 
 	TBinaryExp(const TBinaryExp&& _rhs)
 		: lhs(Move(_rhs.lhs.Self()))
 		, rhs(Move(_rhs.rhs.Self()))
+		, value(Move(_rhs.value))
 	{
 	}
 
 	// evaluation function, evaluate this expression at position i
 	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
 	{
-		return TOp::Exec(lhs.Eval(i, broadcastIndex), rhs.Eval(i, broadcastIndex));
+		float val = TOp::Exec(lhs.Eval(i, broadcastIndex), rhs.Eval(i, broadcastIndex));
+		value.Set(i, broadcastIndex, val);
+		return val;
 	}
 
 	__forceinline TensorShape Shape() const
 	{
-		return BroadcastShape(lhs.Shape(), rhs.Shape());
+		TensorShape shape = BroadcastShape(lhs.Shape(), rhs.Shape());
+		if (value.Empty())
+			value.Resize(shape);
+		return shape;
 	}
 };
 
@@ -151,6 +160,8 @@ struct TUnaryExp : public TExp<TUnaryExp<TOp, TParam>>
 {
 	const TParam param;
 
+	mutable Tensorf value;
+
 	TUnaryExp(const TParam& _param)
 		: param(_param.Self())
 	{
@@ -158,22 +169,28 @@ struct TUnaryExp : public TExp<TUnaryExp<TOp, TParam>>
 
 	TUnaryExp(const TUnaryExp& _rhs)
 		: param(_rhs.param.Self())
+		, value(_rhs.value)
 	{
 	}
 
 	TUnaryExp(TUnaryExp&& _rhs)
 		: param(Move(_rhs.param.Self()))
+		, value(Move(_rhs.value))
 	{
 	}
 
 	// evaluation function, evaluate this expression at position i
 	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
 	{
-		return TOp::Exec(param.Eval(i, broadcastIndex));
+		float val = TOp::Exec(param.Eval(i, broadcastIndex));
+		value.Set(i, broadcastIndex, val);
+		return val;
 	}
 
 	__forceinline TensorShape Shape() const
 	{
+		if (value.Empty())
+			value.Resize(param.Shape());
 		return param.Shape();
 	}
 };
