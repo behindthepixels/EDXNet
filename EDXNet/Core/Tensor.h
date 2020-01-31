@@ -552,10 +552,10 @@ namespace EDX
 		{
 		protected:
 			T* mpData;
-			TensorParams mParams;
 			mutable bool mbDataOwner = true;
 
 		public:
+			TensorParams mParams;
 
 			DeviceType GetDeviceType() const
 			{
@@ -729,6 +729,20 @@ namespace EDX
 				}
 
 				return this->operator[](selfIndex);
+			}
+
+			TENSOR_INLINE T ForwardDiff(const int idx, const TensorParams& broadcastIndex, const Tensor<T, TDeviceType>& dx, bool& hasDiff) const
+			{
+				if (dx.Data() == mpData)
+				{
+					hasDiff = true;
+					return 1;
+				}
+				else
+				{
+					hasDiff = false;
+					return Eval(idx, broadcastIndex);
+				}
 			}
 
 			TENSOR_INLINE void Set(const int idx, const TensorParams& broadcastIndex, const T val)
@@ -1958,6 +1972,33 @@ namespace EDX
 			__forceinline friend		T*	end(Tensor<T, TDeviceType>& tensor) { return tensor.Data() + tensor.LinearSize(); }
 			__forceinline friend const	T*	end(const Tensor<T, TDeviceType>& tensor) { return tensor.Data() + tensor.LinearSize(); }
 		};
+		
+
+		template<typename EType, typename T, DeviceType TDeviceType>
+		inline const Tensor<T, TDeviceType> Backward(const TExp<EType>& rhs, const Tensor<T, TDeviceType>& dx)
+		{
+			const EType& src = rhs.Self();
+
+			Tensor<T, TDeviceType> ret;
+			ret.Resize(src.Shape());
+
+			if (TDeviceType == CPU)
+			{
+				parallel_for(0u, (uint)ret.LinearSize(), [&](int i)
+				{
+					bool dummy = false;
+					ret[i] = src.ForwardDiff(i, ret.mParams, dx, dummy);
+				});
+			}
+			else if (TDeviceType == GPU)
+			{
+#ifdef __CUDACC__
+				InvokeForwardDiff(src, ret.Data(), ret.mParams, dx);
+#endif
+			}
+
+			return ret;
+		}
 
 		using Tensorf = Tensor<float>;
 		using Tensord = Tensor<double>;
