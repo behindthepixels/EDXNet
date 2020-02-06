@@ -343,6 +343,21 @@ void TestCUDA()
 		cudaMemcpy((void*)pHost, (void*)diff.Data(), diff.LinearSize() * sizeof(float), cudaMemcpyDeviceToHost);
 	}
 
+	{
+		Tensorf A = { 5, 5, 5, 5, 5 };
+		Tensorf B = { 2, 2, 2, 2, 2 };
+		Tensorf C = { 7, 7, 7, 7, 7 };
+
+		auto exp = TensorExpr::Sin(A * B) * TensorExpr::Tan(C) + TensorExpr::Square(TensorExpr::Cos(A * C)) + B * C;
+		Tensorf results = exp;
+
+		Tensorf diff = Backward(exp, A);
+		Tensorf numericalDiff = NumericalGradientEval(exp, A);
+
+		float pHost[5] = { 0 };
+		cudaMemcpy((void*)pHost, (void*)diff.Data(), diff.LinearSize() * sizeof(float), cudaMemcpyDeviceToHost);
+	}
+
 	TestFullyConnectedCUDA();
 	TestConvolutionCUDA();
 	TestReluCUDA();

@@ -20,6 +20,11 @@ struct TScalarExp : public TExp<TScalarExp<T>>
 		return val;
 	}
 
+	TENSOR_INLINE float ForwardDiff(const int i, const TensorParams& broadcastIndex, const Tensorf& dx, bool& hasDiff) const
+	{
+		return val;
+	}
+
 	__forceinline TensorShape Shape() const
 	{
 		return{ 1 };
@@ -225,6 +230,17 @@ struct TUnaryExp : public TExp<TUnaryExp<TOp, TParam>>
 		return val;
 	}
 
+	TENSOR_INLINE float ForwardDiff(const int i, const TensorParams& broadcastIndex, const Tensorf& dx, bool& hasDiff) const
+	{
+		bool localHasDiff = false;
+		float diff = param.ForwardDiff(i, broadcastIndex, dx, localHasDiff);
+
+		float localDiff = localHasDiff ? TOp::Diff(param.Eval(i, broadcastIndex)) : value.Get(i, broadcastIndex);
+
+		hasDiff = localHasDiff;
+		return localHasDiff ? localDiff * diff : localDiff;
+	}
+
 	__forceinline TensorShape Shape() const
 	{
 		if (value.Empty())
@@ -246,6 +262,11 @@ struct ExpOp
 	{
 		return Math::Exp(val);
 	}
+
+	TENSOR_INLINE static float Diff(float val)
+	{
+		return Math::Exp(val);
+	}
 };
 
 struct SqrtOp
@@ -253,6 +274,11 @@ struct SqrtOp
 	TENSOR_INLINE static float Exec(float val)
 	{
 		return Math::Sqrt(val);
+	}
+
+	TENSOR_INLINE static float Diff(float val)
+	{
+		return 0.5f / Math::Sqrt(val);
 	}
 };
 
@@ -262,6 +288,11 @@ struct SquareOp
 	{
 		return Math::Square(val);
 	}
+
+	TENSOR_INLINE static float Diff(float val)
+	{
+		return 2.0 * val;
+	}
 };
 
 struct LogOp
@@ -269,6 +300,51 @@ struct LogOp
 	TENSOR_INLINE static float Exec(float val)
 	{
 		return Math::Log(val);
+	}
+
+	TENSOR_INLINE static float Diff(float val)
+	{
+		return 1.0f / val;
+	}
+};
+
+struct SinOp
+{
+	TENSOR_INLINE static float Exec(float val)
+	{
+		return Math::Sin(val);
+	}
+
+	TENSOR_INLINE static float Diff(float val)
+	{
+		return Math::Cos(val);
+	}
+};
+
+struct CosOp
+{
+	TENSOR_INLINE static float Exec(float val)
+	{
+		return Math::Cos(val);
+	}
+
+	TENSOR_INLINE static float Diff(float val)
+	{
+		return -Math::Sin(val);
+	}
+};
+
+struct TanOp
+{
+	TENSOR_INLINE static float Exec(float val)
+	{
+		return Math::Tan(val);
+	}
+
+	TENSOR_INLINE static float Diff(float val)
+	{
+		float cos = Math::Cos(val);
+		return 1.0f / (cos * cos);
 	}
 };
 
@@ -278,6 +354,11 @@ struct ReluOp
 	{
 		return val > 0.0f ? val : 0.0f;
 	}
+
+	TENSOR_INLINE static float Diff(float val)
+	{
+		return val > 0.0f ? 1.0f : 0.0f;
+	}
 };
 
 struct AbsOp
@@ -285,6 +366,11 @@ struct AbsOp
 	TENSOR_INLINE static float Exec(float val)
 	{
 		return Math::Abs(val);
+	}
+
+	TENSOR_INLINE static float Diff(float val)
+	{
+		return val > 0.0f ? 1.0f : -1.0f;
 	}
 };
 
@@ -311,6 +397,24 @@ template<typename TParam>
 inline TUnaryExp<LogOp, TParam> LogExp(const TExp<TParam>& param)
 {
 	return ElementWiseUnaryOpExpression<LogOp>(param);
+}
+
+template<typename TParam>
+inline TUnaryExp<SinOp, TParam> SinExp(const TExp<TParam>& param)
+{
+	return ElementWiseUnaryOpExpression<SinOp>(param);
+}
+
+template<typename TParam>
+inline TUnaryExp<CosOp, TParam> CosExp(const TExp<TParam>& param)
+{
+	return ElementWiseUnaryOpExpression<CosOp>(param);
+}
+
+template<typename TParam>
+inline TUnaryExp<TanOp, TParam> TanExp(const TExp<TParam>& param)
+{
+	return ElementWiseUnaryOpExpression<TanOp>(param);
 }
 
 template<typename TParam>
@@ -344,6 +448,11 @@ struct TConstantExp : public TExp<TConstantExp>
 
 	// evaluation function, evaluate this expression at position i
 	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
+	{
+		return val;
+	}
+
+	TENSOR_INLINE float ForwardDiff(const int i, const TensorParams& broadcastIndex, const Tensorf& dx, bool& hasDiff) const
 	{
 		return val;
 	}
@@ -520,6 +629,24 @@ namespace TensorExpr
 	__forceinline TUnaryExp<LogOp, TParam> Log(const TExp<TParam>& param)
 	{
 		return LogExp(param);
+	}
+
+	template<typename TParam>
+	__forceinline TUnaryExp<SinOp, TParam> Sin(const TExp<TParam>& param)
+	{
+		return SinExp(param);
+	}
+
+	template<typename TParam>
+	__forceinline TUnaryExp<CosOp, TParam> Cos(const TExp<TParam>& param)
+	{
+		return CosExp(param);
+	}
+
+	template<typename TParam>
+	__forceinline TUnaryExp<TanOp, TParam> Tan(const TExp<TParam>& param)
+	{
+		return TanExp(param);
 	}
 
 	template<typename TParam>

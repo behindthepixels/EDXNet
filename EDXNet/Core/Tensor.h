@@ -761,6 +761,22 @@ namespace EDX
 				this->operator[](selfIndex) = val;
 			}
 
+			TENSOR_INLINE T Get(const int idx, const TensorParams& broadcastIndex) const
+			{
+				TensorShape selfIndex;
+				selfIndex.Resize(Dim());
+
+				TensorShape index = broadcastIndex.Index(idx);
+				for (int j = 0; j < Dim(); j++)
+				{
+					selfIndex[j] = index[j + broadcastIndex.Shape().Size() - Dim()];
+					if (selfIndex[j] >= Shape(j))
+						selfIndex[j] = 0;
+				}
+
+				return this->operator[](selfIndex);
+			}
+
 			Tensor(NestedInitializerList<T, 1> initList)
 				: mpData(nullptr)
 			{
@@ -2005,5 +2021,29 @@ namespace EDX
 		using Tensori = Tensor<int>;
 		
 		#include "TemplateExpression.h"
+
+		template<typename TExp>
+		Tensorf NumericalGradientEval(TExp exp, Tensorf& x, const float step = 1e-3f)
+		{
+			Tensorf gradient;
+			gradient.Resize(x.Shape());
+
+			for (int i = 0; i < x.LinearSize(); i++)
+			{
+				float originalVal = x.Get(i);
+
+				x.Set(i, originalVal + step);
+				Tensorf positive = exp;
+
+				x.Set(i, originalVal - step);
+				Tensorf negative = exp;
+
+				x.Set(i, originalVal);
+
+				gradient.Set(i, Tensorf::Sum((positive - negative)).Get(0) / (2.0f * step));
+			}
+
+			return gradient;
+		}
 	}
 }
