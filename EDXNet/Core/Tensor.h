@@ -700,10 +700,11 @@ namespace EDX
 
 				if (TDeviceType == CPU)
 				{
-					parallel_for(0u, (uint)LinearSize(), [&](int i)
+					//parallel_for(0u, (uint)LinearSize(), [&](int i)
+					for (int i = 0; i < LinearSize(); i++)
 					{
 						mpData[i] = src.Eval(i, mParams);
-					});
+					}
 				}
 				else if (TDeviceType == GPU)
 				{
@@ -731,17 +732,15 @@ namespace EDX
 				return this->operator[](selfIndex);
 			}
 
-			TENSOR_INLINE T ForwardDiff(const int idx, const TensorParams& broadcastIndex, const Tensor<T, TDeviceType>& dx, bool& hasDiff) const
+			TENSOR_INLINE T ForwardDiff(const int idx, const TensorParams& broadcastIndex, const Tensor<T, TDeviceType>& dx) const
 			{
 				if (dx.Data() == mpData)
 				{
-					hasDiff = true;
 					return 1;
 				}
 				else
 				{
-					hasDiff = false;
-					return Eval(idx, broadcastIndex);
+					return 0;
 				}
 			}
 
@@ -2000,11 +1999,11 @@ namespace EDX
 
 			if (TDeviceType == CPU)
 			{
-				parallel_for(0u, (uint)ret.LinearSize(), [&](int i)
+				//parallel_for(0u, (uint)ret.LinearSize(), [&](int i)
+				for (int i = 0; i < ret.LinearSize(); i++)
 				{
-					bool dummy = false;
-					ret[i] = src.ForwardDiff(i, ret.mParams, dx, dummy);
-				});
+					ret[i] = src.ForwardDiff(i, ret.mParams, dx);
+				}
 			}
 			else if (TDeviceType == GPU)
 			{

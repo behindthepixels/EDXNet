@@ -20,7 +20,7 @@ struct TScalarExp : public TExp<TScalarExp<T>>
 		return val;
 	}
 
-	TENSOR_INLINE float ForwardDiff(const int i, const TensorParams& broadcastIndex, const Tensorf& dx, bool& hasDiff) const
+	TENSOR_INLINE float ForwardDiff(const int i, const TensorParams& broadcastIndex, const Tensorf& dx) const
 	{
 		return val;
 	}
@@ -82,16 +82,15 @@ struct TBinaryExp : public TExp<TBinaryExp<TOp, TLhs, TRhs>>
 		return shape;
 	}
 
-	TENSOR_INLINE float ForwardDiff(const int i, const TensorParams& broadcastIndex, const Tensorf& dx, bool& hasDiff) const
+	TENSOR_INLINE float ForwardDiff(const int i, const TensorParams& broadcastIndex, const Tensorf& dx) const
 	{
-		bool leftHasDiff = false;
-		float leftDiff = lhs.ForwardDiff(i, broadcastIndex, dx, leftHasDiff);
+		float leftDiff = lhs.ForwardDiff(i, broadcastIndex, dx);
+		float leftVal = lhs.Eval(i, broadcastIndex);
 
-		bool rightHasDiff = false;
-		float rightDiff = rhs.ForwardDiff(i, broadcastIndex, dx, rightHasDiff);
+		float rightDiff = rhs.ForwardDiff(i, broadcastIndex, dx);
+		float rightVal = rhs.Eval(i, broadcastIndex);
 
-		hasDiff = leftHasDiff || rightHasDiff;
-		return TOp::Diff(leftDiff, rightDiff, leftHasDiff, rightHasDiff);
+		return TOp::Diff(leftDiff, leftVal, rightDiff, rightVal);
 	}
 };
 
@@ -102,12 +101,9 @@ struct AddOp
 		return a + b;
 	}
 
-	TENSOR_INLINE static float Diff(float a, float b, bool leftHasDiff, bool rightHasDiff)
+	TENSOR_INLINE static float Diff(float da, float a, float db, float b)
 	{
-		float ret = 0.0f;
-		ret += leftHasDiff ? a : 0.0;
-		ret += rightHasDiff ? b : 0.0;
-		return ret;
+		return da + db;
 	}
 };
 
@@ -118,12 +114,9 @@ struct MinusOp
 		return a - b;
 	}
 
-	TENSOR_INLINE static float Diff(float a, float b, bool leftHasDiff, bool rightHasDiff)
+	TENSOR_INLINE static float Diff(float da, float a, float db, float b)
 	{
-		float ret = 0.0f;
-		ret += leftHasDiff ? a : 0.0;
-		ret -= rightHasDiff ? b : 0.0;
-		return ret;
+		return da - db;
 	}
 };
 
@@ -134,9 +127,9 @@ struct MulOp
 		return a * b;
 	}
 
-	TENSOR_INLINE static float Diff(float a, float b, bool leftHasDiff, bool rightHasDiff)
+	TENSOR_INLINE static float Diff(float da, float a, float db, float b)
 	{
-		return a * b;
+		return da * b + db * a;
 	}
 };
 
@@ -147,9 +140,9 @@ struct DivOp
 		return a / b;
 	}
 
-	TENSOR_INLINE static float Diff(float a, float b, bool leftHasDiff, bool rightHasDiff)
+	TENSOR_INLINE static float Diff(float da, float a, float db, float b)
 	{
-		return a / b;
+		return (da * b + db * a) / (b * b);
 	}
 };
 
@@ -230,15 +223,13 @@ struct TUnaryExp : public TExp<TUnaryExp<TOp, TParam>>
 		return val;
 	}
 
-	TENSOR_INLINE float ForwardDiff(const int i, const TensorParams& broadcastIndex, const Tensorf& dx, bool& hasDiff) const
+	TENSOR_INLINE float ForwardDiff(const int i, const TensorParams& broadcastIndex, const Tensorf& dx) const
 	{
-		bool localHasDiff = false;
-		float diff = param.ForwardDiff(i, broadcastIndex, dx, localHasDiff);
+		float diff = param.ForwardDiff(i, broadcastIndex, dx);
 
-		float localDiff = localHasDiff ? TOp::Diff(param.Eval(i, broadcastIndex)) : value.Get(i, broadcastIndex);
+		float localDiff = TOp::Diff(param.Eval(i, broadcastIndex));
 
-		hasDiff = localHasDiff;
-		return localHasDiff ? localDiff * diff : localDiff;
+		return localDiff * diff;
 	}
 
 	__forceinline TensorShape Shape() const
@@ -304,7 +295,7 @@ struct LogOp
 
 	TENSOR_INLINE static float Diff(float val)
 	{
-		return 1.0f / val;
+		return val == 0.0f ? 0.0f : 1.0f / val;
 	}
 };
 
@@ -452,7 +443,7 @@ struct TConstantExp : public TExp<TConstantExp>
 		return val;
 	}
 
-	TENSOR_INLINE float ForwardDiff(const int i, const TensorParams& broadcastIndex, const Tensorf& dx, bool& hasDiff) const
+	TENSOR_INLINE float ForwardDiff(const int i, const TensorParams& broadcastIndex, const Tensorf& dx) const
 	{
 		return val;
 	}

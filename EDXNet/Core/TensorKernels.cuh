@@ -31,8 +31,7 @@ __global__ void ForwardDiffKernel(const ExpType rhs, T* pData, const TensorParam
 	if (i >= tensorIndex.LinearSize())
 		return;
 
-	bool dummy = false;
-	pData[i] = rhs.ForwardDiff(i, tensorIndex, dx, dummy);
+	pData[i] = rhs.ForwardDiff(i, tensorIndex, dx);
 }
 
 template<typename ExpType, typename T, typename TensorT>

@@ -588,7 +588,22 @@ void main()
 
 	//TestMattingLaplacian();
 
-	TestCUDA();
+	//TestCUDA();
+
+
+	Tensorf A = { 5, 5, 5, 5, 5 };
+	Tensorf B = { 2, 2, 2, 2, 2 };
+	Tensorf C = { 7, 7, 7, 7, 7 };
+
+	auto exp = TensorExpr::Sin(A * A) * TensorExpr::Tan(A) + TensorExpr::Square(TensorExpr::Cos(A * C)) + B * C;
+	Tensorf results = exp;
+
+	Tensorf diff = Backward(exp, A);
+	Tensorf numericalDiff = NumericalGradientEval(exp, A);
+
+	std::cout << diff << "\n";
+	std::cout << numericalDiff << "\n";
+
 
 
 	Assertf(!_CrtDumpMemoryLeaks(), "Memory leak detected. See debug output for details");
