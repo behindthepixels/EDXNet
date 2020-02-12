@@ -45,6 +45,8 @@ struct TBinaryExp : public TExp<TBinaryExp<TOp, TLhs, TRhs>>
 	const TRhs rhs;
 
 	mutable Tensorf value;
+	mutable Tensorf leftVal;
+	mutable Tensorf rightVal;
 
 	TBinaryExp(const TLhs& _lhs, const TRhs& _rhs)
 		: lhs(_lhs.Self())
@@ -74,23 +76,57 @@ struct TBinaryExp : public TExp<TBinaryExp<TOp, TLhs, TRhs>>
 		return val;
 	}
 
-	__forceinline TensorShape Shape() const
-	{
-		TensorShape shape = BroadcastShape(lhs.Shape(), rhs.Shape());
-		if (value.Empty())
-			value.Resize(shape);
-		return shape;
-	}
-
 	TENSOR_INLINE float ForwardDiff(const int i, const TensorParams& broadcastIndex, const Tensorf& dx) const
 	{
 		float leftDiff = lhs.ForwardDiff(i, broadcastIndex, dx);
-		float leftVal = lhs.Eval(i, broadcastIndex);
+		float left = leftVal.Empty() ? lhs.Eval(i, broadcastIndex) : leftVal.Eval(i, broadcastIndex);
 
 		float rightDiff = rhs.ForwardDiff(i, broadcastIndex, dx);
-		float rightVal = rhs.Eval(i, broadcastIndex);
+		float right = rightVal.Empty() ? rhs.Eval(i, broadcastIndex) : rightVal.Eval(i, broadcastIndex);
 
-		return TOp::Diff(leftDiff, leftVal, rightDiff, rightVal);
+		return TOp::Diff(leftDiff, left, rightDiff, right);
+	}
+
+	__forceinline TensorShape Shape() const
+	{
+		TensorShape shape = BroadcastShape(lhs.Shape(), rhs.Shape());
+
+		if (value.Empty())
+			value.Resize(shape);
+
+		return shape;
+	}
+
+	__forceinline const Tensorf& GetValue() const
+	{
+		return value;
+	}
+
+	__forceinline void PreprocessDiff(const Tensorf& dx) const
+	{
+		TensorShape leftShape = lhs.Shape();
+		TensorShape rightShape = rhs.Shape();
+		if (leftShape != rightShape)
+		{
+			if (leftShape == Shape())
+			{
+				leftVal = Tensorf::Unbroadcast(lhs.GetValue(), rightShape);
+			}
+			else if (rightShape == Shape())
+			{
+				rightVal = Tensorf::Unbroadcast(rhs.GetValue(), leftShape);
+			}
+			else
+			{
+				leftVal = Tensorf::Unbroadcast(lhs.GetValue(), rightShape);
+				rightVal = Tensorf::Unbroadcast(rhs.GetValue(), leftShape);
+			}
+		}
+
+		lhs.PreprocessDiff(dx);
+		rhs.PreprocessDiff(dx);
+
+		return;
 	}
 };
 
@@ -234,9 +270,17 @@ struct TUnaryExp : public TExp<TUnaryExp<TOp, TParam>>
 
 	__forceinline TensorShape Shape() const
 	{
-		if (value.Empty())
-			value.Resize(param.Shape());
-		return param.Shape();
+		TensorShape shape = param.Shape();
+		if (!value.Empty())
+			return value.Shape();
+		
+		value.Resize(shape);
+		return shape;
+	}
+
+	__forceinline const Tensorf& GetValue() const
+	{
+		return value;
 	}
 };
 
@@ -503,11 +547,12 @@ struct TDotExp : public TExp<TDotExp<TLhs, TRhs>>
 		if (value.Empty())
 		{
 			value.Resize(shape);
-
-			Tensorf left = lhs;
-			Tensorf right = rhs;
-			value = Tensorf::Dot(left, right);
 		}
+
+
+		Tensorf left = lhs;
+		Tensorf right = rhs;
+		value = Tensorf::Dot(left, right);
 
 		return shape;
 	}
@@ -525,16 +570,17 @@ struct TProjectExp : public TExp<TProjectExp<TOp, TOperand>>
 	const TOperand operand;
 	TOp op;
 	float initVal;
-	TensorShape axises;
+	TensorShape axes;
 	bool keepDim;
 
 	mutable Tensorf value;
+	mutable Tensorf gradValue;
 
-	TProjectExp(const TOperand& _operand, TOp _op, const float _initVal, const TensorShape& _axises, const bool& _keepDim)
+	TProjectExp(const TOperand& _operand, TOp _op, const float _initVal, const TensorShape& _axes, const bool& _keepDim)
 		: operand(_operand.Self())
 		, op(_op)
 		, initVal(_initVal)
-		, axises(_axises)
+		, axes(_axes)
 		, keepDim(_keepDim)
 	{
 	}
@@ -544,7 +590,7 @@ struct TProjectExp : public TExp<TProjectExp<TOp, TOperand>>
 		, value(exp.value)
 		, op(exp.op)
 		, initVal(exp.initVal)
-		, axises(exp.axises)
+		, axes(exp.axes)
 		, keepDim(exp.keepDim)
 	{
 	}
@@ -554,7 +600,7 @@ struct TProjectExp : public TExp<TProjectExp<TOp, TOperand>>
 		, value(Move(exp.value))
 		, op(exp.op)
 		, initVal(exp.initVal)
-		, axises(exp.axises)
+		, axes(exp.axes)
 		, keepDim(exp.keepDim)
 	{
 	}
@@ -567,33 +613,48 @@ struct TProjectExp : public TExp<TProjectExp<TOp, TOperand>>
 
 	__forceinline TensorShape Shape() const
 	{
-		if (value.Empty())
-		{
-			Tensorf operandVal = operand;
-			value = Tensorf::ProjectionOp<TOp>(operandVal, axises, keepDim, op, initVal);
-		}
+		Tensorf operandVal = operand;
+		value = Tensorf::ProjectionOp<TOp>(operandVal, axes, keepDim, op, initVal);
 
 		return value.Shape();
+	}
+
+	__forceinline const Tensorf& GetValue() const
+	{
+		return value;
+	}
+
+	TENSOR_INLINE float ForwardDiff(const int i, const TensorParams& broadcastIndex, const Tensorf& dx) const
+	{
+		return operand.ForwardDiff(i, broadcastIndex, dx);
+	}
+
+	__forceinline void PreprocessDiff(const Tensorf& dx) const
+	{
+		Tensorf diff = Backward(operand, dx);
+		gradValue = Tensorf::ProjectionOp<TOp>(diff, axes, keepDim, op, initVal);
+
+		return;
 	}
 };
 
 
 template<typename TOperand>
-inline TProjectExp<Algorithm::Plus<>, TOperand> SumExp(const TExp<TOperand>& operand, const TensorShape& axises = { -1 }, const bool keepDim = false)
+inline TProjectExp<Algorithm::Plus<>, TOperand> SumExp(const TExp<TOperand>& operand, const TensorShape& axes = { -1 }, const bool keepDim = false)
 {
-	return TProjectExp<Algorithm::Plus<>, TOperand>(operand.Self(), Algorithm::Plus<>(), 0.0f, axises, keepDim);
+	return TProjectExp<Algorithm::Plus<>, TOperand>(operand.Self(), Algorithm::Plus<>(), 0.0f, axes, keepDim);
 }
 
 template<typename TOperand>
-inline TProjectExp<Algorithm::Multiply<>, TOperand> ProductExp(const TExp<TOperand>& operand, const TensorShape& axises = { -1 }, const bool keepDim = false)
+inline TProjectExp<Algorithm::Multiply<>, TOperand> ProductExp(const TExp<TOperand>& operand, const TensorShape& axes = { -1 }, const bool keepDim = false)
 {
-	return TProjectExp<Algorithm::Multiply<>, TOperand>(operand.Self(), Algorithm::Multiply<>(), 1.0f, axises, keepDim);
+	return TProjectExp<Algorithm::Multiply<>, TOperand>(operand.Self(), Algorithm::Multiply<>(), 1.0f, axes, keepDim);
 }
 
 template<typename TOperand>
-inline TProjectExp<Algorithm::Max<>, TOperand> MaxExp(const TExp<TOperand>& operand, const TensorShape& axises = { -1 }, const bool keepDim = false)
+inline TProjectExp<Algorithm::Max<>, TOperand> MaxExp(const TExp<TOperand>& operand, const TensorShape& axes = { -1 }, const bool keepDim = false)
 {
-	return TProjectExp<Algorithm::Max<>, TOperand>(operand.Self(), Algorithm::Max<>(), float(Math::EDX_NEG_INFINITY), axises, keepDim);
+	return TProjectExp<Algorithm::Max<>, TOperand>(operand.Self(), Algorithm::Max<>(), float(Math::EDX_NEG_INFINITY), axes, keepDim);
 }
 
 namespace TensorExpr
@@ -665,27 +726,27 @@ namespace TensorExpr
 	}
 
 	template<typename TOperand>
-	__forceinline TProjectExp<Algorithm::Plus<>, TOperand> Sum(const TExp<TOperand>& param, const TensorShape& axises = { -1 }, const bool keepDim = false)
+	__forceinline TProjectExp<Algorithm::Plus<>, TOperand> Sum(const TExp<TOperand>& param, const TensorShape& axes = { -1 }, const bool keepDim = false)
 	{
-		return SumExp(param, axises, keepDim);
+		return SumExp(param, axes, keepDim);
 	}
 
 	template<typename TOperand>
-	__forceinline TProjectExp<Algorithm::Multiply<>, TOperand> Product(const TExp<TOperand>& param, const TensorShape& axises = { -1 }, const bool keepDim = false)
+	__forceinline TProjectExp<Algorithm::Multiply<>, TOperand> Product(const TExp<TOperand>& param, const TensorShape& axes = { -1 }, const bool keepDim = false)
 	{
-		return ProductExp(param, axises, keepDim);
+		return ProductExp(param, axes, keepDim);
 	}
 
 	template<typename TOperand>
-	__forceinline TProjectExp<Algorithm::Max<>, TOperand> Max(const TExp<TOperand>& param, const TensorShape& axises = { -1 }, const bool keepDim = false)
+	__forceinline TProjectExp<Algorithm::Max<>, TOperand> Max(const TExp<TOperand>& param, const TensorShape& axes = { -1 }, const bool keepDim = false)
 	{
-		return MaxExp(param, axises, keepDim);
+		return MaxExp(param, axes, keepDim);
 	}
 
 	template<typename TOperand>
-	__forceinline auto Mean(const TExp<TOperand>& x, const TensorShape& axises = { -1 }, const bool keepDim = false)
+	__forceinline auto Mean(const TExp<TOperand>& x, const TensorShape& axes = { -1 }, const bool keepDim = false)
 	{
-		auto sum = Sum(x, axises, keepDim);
+		auto sum = Sum(x, axes, keepDim);
 
 		float invDivisor = sum.Self().Shape().LinearSize() / float(x.Self().Shape().LinearSize());
 		auto mean = sum * Scalar(invDivisor);
@@ -694,19 +755,19 @@ namespace TensorExpr
 	}
 
 	template<typename TOperand>
-	__forceinline auto Variance(const TExp<TOperand>& x, const TensorShape& axises = { -1 }, const bool keepDim = false)
+	__forceinline auto Variance(const TExp<TOperand>& x, const TensorShape& axes = { -1 }, const bool keepDim = false)
 	{
-		auto mean = Mean(x, axises, keepDim);
+		auto mean = Mean(x, axes, keepDim);
 		auto centeredX = x - mean;
-		auto variance = Mean(centeredX * centeredX, axises, keepDim);
+		auto variance = Mean(centeredX * centeredX, axes, keepDim);
 
 		return variance;
 	}
 
 	template<typename TOperand>
-	__forceinline auto StandardDeviation(const TExp<TOperand>& x, const TensorShape& axises = { -1 }, const bool keepDim = false)
+	__forceinline auto StandardDeviation(const TExp<TOperand>& x, const TensorShape& axes = { -1 }, const bool keepDim = false)
 	{
-		auto variance = Variance(x, axises, keepDim);
+		auto variance = Variance(x, axes, keepDim);
 
 		return TensorExpr::Sqrt(variance + Scalar(1e-5f));
 	}

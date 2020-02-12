@@ -374,11 +374,11 @@ namespace EDX
 				}
 			}
 
-			TENSOR_INLINE bool IterateIndex(TensorShape& index, const TensorShape& axises /*Axises to iterate through*/) const
+			TENSOR_INLINE bool IterateIndex(TensorShape& index, const TensorShape& axes /*axes to iterate through*/) const
 			{
-				for (int i = axises.Size() - 1; i >= 0; i--)
+				for (int i = axes.Size() - 1; i >= 0; i--)
 				{
-					int axis = axises[i];
+					int axis = axes[i];
 
 					index[axis]++;
 
@@ -547,7 +547,7 @@ namespace EDX
 			CPU, GPU
 		};
 
-		template<class T, DeviceType TDeviceType = GPU>
+		template<class T, DeviceType TDeviceType = CPU>
 		class Tensor : public TExp<Tensor<T, TDeviceType>>
 		{
 		protected:
@@ -744,6 +744,15 @@ namespace EDX
 				}
 			}
 
+			__forceinline void PreprocessDiff(const Tensor<T, TDeviceType>& dx) const
+			{
+			}
+
+			__forceinline const Tensor<T, TDeviceType>& GetValue() const
+			{
+				return *this;
+			}
+
 			TENSOR_INLINE void Set(const int idx, const TensorParams& broadcastIndex, const T val)
 			{
 				TensorShape selfIndex;
@@ -758,22 +767,6 @@ namespace EDX
 				}
 
 				this->operator[](selfIndex) = val;
-			}
-
-			TENSOR_INLINE T Get(const int idx, const TensorParams& broadcastIndex) const
-			{
-				TensorShape selfIndex;
-				selfIndex.Resize(Dim());
-
-				TensorShape index = broadcastIndex.Index(idx);
-				for (int j = 0; j < Dim(); j++)
-				{
-					selfIndex[j] = index[j + broadcastIndex.Shape().Size() - Dim()];
-					if (selfIndex[j] >= Shape(j))
-						selfIndex[j] = 0;
-				}
-
-				return this->operator[](selfIndex);
 			}
 
 			Tensor(NestedInitializerList<T, 1> initList)
@@ -1103,9 +1096,9 @@ namespace EDX
 			{
 				return mParams.IterateIndex(index);
 			}
-			TENSOR_INLINE bool IterateIndex(TensorShape& index, const TensorShape& axises) const
+			TENSOR_INLINE bool IterateIndex(TensorShape& index, const TensorShape& axes) const
 			{
-				return mParams.IterateIndex(index, axises);
+				return mParams.IterateIndex(index, axes);
 			}
 			TENSOR_INLINE int Shape(int iDim) const
 			{
@@ -1613,40 +1606,40 @@ namespace EDX
 				return ret;
 			}
 
-			static Tensor<T, TDeviceType> Sum(const Tensor<T, TDeviceType>& inTensor, const TensorShape& axises = { -1 }, const bool keepDim = false)
+			static Tensor<T, TDeviceType> Sum(const Tensor<T, TDeviceType>& inTensor, const TensorShape& axes = { -1 }, const bool keepDim = false)
 			{
-				return ProjectionOp(inTensor, axises, keepDim, Algorithm::Plus<>(), T(0));
+				return ProjectionOp(inTensor, axes, keepDim, Algorithm::Plus<>(), T(0));
 			}
 
-			static Tensor<T, TDeviceType> Product(const Tensor<T, TDeviceType>& inTensor, const TensorShape& axises = { -1 })
+			static Tensor<T, TDeviceType> Product(const Tensor<T, TDeviceType>& inTensor, const TensorShape& axes = { -1 })
 			{
-				return ProjectionOp(inTensor, axises, keepDim, Algorithm::Multiply<>(), T(1));
+				return ProjectionOp(inTensor, axes, keepDim, Algorithm::Multiply<>(), T(1));
 			}
 
-			static Tensor<T, TDeviceType> Max(const Tensor<T, TDeviceType>& inTensor, const TensorShape& axises = { -1 }, const bool keepDim = false)
+			static Tensor<T, TDeviceType> Max(const Tensor<T, TDeviceType>& inTensor, const TensorShape& axes = { -1 }, const bool keepDim = false)
 			{
-				return ProjectionOp(inTensor, axises, keepDim, Algorithm::Max<>(), T(Math::EDX_NEG_INFINITY));
+				return ProjectionOp(inTensor, axes, keepDim, Algorithm::Max<>(), T(Math::EDX_NEG_INFINITY));
 			}
 
 
-			static void SumInplace(const Tensor<T, TDeviceType>& inTensor, Tensor<T, TDeviceType>* pResult, const TensorShape& axises = { -1 }, const bool keepDim = false)
+			static void SumInplace(const Tensor<T, TDeviceType>& inTensor, Tensor<T, TDeviceType>* pResult, const TensorShape& axes = { -1 }, const bool keepDim = false)
 			{
-				ProjectionOpInplace(inTensor, axises, keepDim, Algorithm::Plus<>(), T(0), pResult);
+				ProjectionOpInplace(inTensor, axes, keepDim, Algorithm::Plus<>(), T(0), pResult);
 			}
 
-			static void ProductInplace(const Tensor<T, TDeviceType>& inTensor, Tensor<T, TDeviceType>* pResult, const TensorShape& axises = { -1 })
+			static void ProductInplace(const Tensor<T, TDeviceType>& inTensor, Tensor<T, TDeviceType>* pResult, const TensorShape& axes = { -1 })
 			{
-				ProjectionOpInplace(inTensor, axises, keepDim, Algorithm::Multiply<>(), T(1), pResult);
+				ProjectionOpInplace(inTensor, axes, keepDim, Algorithm::Multiply<>(), T(1), pResult);
 			}
 
-			static void MaxInplace(const Tensor<T, TDeviceType>& inTensor, Tensor<T, TDeviceType>* pResult, const TensorShape& axises = { -1 }, const bool keepDim = false)
+			static void MaxInplace(const Tensor<T, TDeviceType>& inTensor, Tensor<T, TDeviceType>* pResult, const TensorShape& axes = { -1 }, const bool keepDim = false)
 			{
-				ProjectionOpInplace(inTensor, axises, keepDim, Algorithm::Max<>(), T(Math::EDX_NEG_INFINITY), pResult);
+				ProjectionOpInplace(inTensor, axes, keepDim, Algorithm::Max<>(), T(Math::EDX_NEG_INFINITY), pResult);
 			}
 
-			static Tensor<T, TDeviceType> Mean(const Tensor<T, TDeviceType>& X, const TensorShape& axises = { -1 }, const bool keepDim = false)
+			static Tensor<T, TDeviceType> Mean(const Tensor<T, TDeviceType>& X, const TensorShape& axes = { -1 }, const bool keepDim = false)
 			{
-				Tensor<T, TDeviceType> ret = Sum(X, axises);
+				Tensor<T, TDeviceType> ret = Sum(X, axes);
 
 				float invDivisor = ret.LinearSize() / float(X.LinearSize());
 				ret *= invDivisor;
@@ -1654,12 +1647,12 @@ namespace EDX
 				return ret;
 			}
 
-			static Tensor<T, TDeviceType> StandardDeviation(const Tensor<T, TDeviceType>& X, const TensorShape& axises = { -1 }, const bool keepDim = false)
+			static Tensor<T, TDeviceType> StandardDeviation(const Tensor<T, TDeviceType>& X, const TensorShape& axes = { -1 }, const bool keepDim = false)
 			{
-				Tensor<T, TDeviceType> mean = Mean(X, axises, keepDim);
+				Tensor<T, TDeviceType> mean = Mean(X, axes, keepDim);
 				Tensor<T, TDeviceType> centeredX = X - mean;
 
-				Tensor<T, TDeviceType> variance = Tensorf::Mean(centeredX * centeredX, axises, keepDim);
+				Tensor<T, TDeviceType> variance = Tensorf::Mean(centeredX * centeredX, axes, keepDim);
 
 				return TensorExpr::Sqrt(variance + Scalar(1e-5f));
 			}
@@ -1818,9 +1811,9 @@ namespace EDX
 			}
 
 			template<typename Op>
-			static Tensor<T, TDeviceType> ProjectionOp(const Tensor<T, TDeviceType>& lhs, const TensorShape& axises, const bool keepDim, Op op, T initVal)
+			static Tensor<T, TDeviceType> ProjectionOp(const Tensor<T, TDeviceType>& lhs, const TensorShape& axes, const bool keepDim, Op op, T initVal)
 			{
-				if (axises.Size() == 1 && axises[0] == -1)
+				if (axes.Size() == 1 && axes[0] == -1)
 				{
 					if (TDeviceType == CPU)
 					{
@@ -1847,18 +1840,18 @@ namespace EDX
 				{
 					if (!keepDim)
 					{
-						if (!axises.Contains(i))
+						if (!axes.Contains(i))
 							projShape.Add(inShape[i]);
 					}
 					else
 					{
-						if (axises.Contains(i))
+						if (axes.Contains(i))
 							projShape.Add(1);
 						else
 							projShape.Add(inShape[i]);
 					}
 
-					if (axises.Contains(i))
+					if (axes.Contains(i))
 						projShapeKeepDim.Add(1);
 					else
 						projShapeKeepDim.Add(inShape[i]);
@@ -1886,14 +1879,14 @@ namespace EDX
 						{
 							ret[i] = op(ret[i], lhs(projIndex));
 						}
-						while (lhs.IterateIndex(projIndex, axises));
+						while (lhs.IterateIndex(projIndex, axes));
 					});
 				}
 				else if (TDeviceType == GPU)
 				{
 					ret.Resize(projShape);
 #ifdef __CUDACC__
-					InvokeTensorProjectionOp(ret, lhs, tensorParamsKeepDim, axises, op, initVal);
+					InvokeTensorProjectionOp(ret, lhs, tensorParamsKeepDim, axes, op, initVal);
 #endif
 				}
 
@@ -1901,9 +1894,9 @@ namespace EDX
 			}
 
 			template<typename Op>
-			static void ProjectionOpInplace(const Tensor<T, TDeviceType>& lhs, const TensorShape& axises, const bool keepDim, Op op, T initVal, Tensor<T, TDeviceType>* pResult)
+			static void ProjectionOpInplace(const Tensor<T, TDeviceType>& lhs, const TensorShape& axes, const bool keepDim, Op op, T initVal, Tensor<T, TDeviceType>* pResult)
 			{
-				if (axises.Size() == 1 && axises[0] == -1)
+				if (axes.Size() == 1 && axes[0] == -1)
 				{
 					if (TDeviceType == CPU)
 					{
@@ -1927,18 +1920,18 @@ namespace EDX
 				{
 					if (!keepDim)
 					{
-						if (!axises.Contains(i))
+						if (!axes.Contains(i))
 							projShape.Add(inShape[i]);
 					}
 					else
 					{
-						if (axises.Contains(i))
+						if (axes.Contains(i))
 							projShape.Add(1);
 						else
 							projShape.Add(inShape[i]);
 					}
 
-					if (axises.Contains(i))
+					if (axes.Contains(i))
 						projShapeKeepDim.Add(1);
 					else
 						projShapeKeepDim.Add(inShape[i]);
@@ -1964,16 +1957,40 @@ namespace EDX
 						do
 						{
 							(*pResult)[i] = op((*pResult)[i], lhs(projIndex));
-						} while (lhs.IterateIndex(projIndex, axises));
+						} while (lhs.IterateIndex(projIndex, axes));
 					});
 				}
 				else if (TDeviceType == GPU)
 				{
 					pResult->Resize(projShape);
 #ifdef __CUDACC__
-					InvokeTensorProjectionOp(*pResult, lhs, tensorParamsKeepDim, axises, op, initVal);
+					InvokeTensorProjectionOp(*pResult, lhs, tensorParamsKeepDim, axes, op, initVal);
 #endif
 				}
+			}
+
+			static Tensor<T, TDeviceType> Unbroadcast(const Tensor<T, TDeviceType>& tensor, const TensorShape& target)
+			{
+				TensorShape shape = tensor.Shape();
+				TensorShape axes;
+
+				if (target.LinearSize() == 1)
+				{
+					axes.Add(-1);
+				}
+				else
+				{
+					for (int i = 0; i < shape.Size(); i++)
+					{
+						if (shape[i] > target[i])
+							axes.Add(i);
+					}
+				}
+
+				Tensor<T, TDeviceType> ret = Tensor<T, TDeviceType>::Sum(tensor, axes, true);
+				ret.Reshape(target);
+
+				return ret;
 			}
 
 	private:
@@ -1995,7 +2012,9 @@ namespace EDX
 			const EType& src = rhs.Self();
 
 			Tensor<T, TDeviceType> ret;
-			ret.Resize(src.Shape());
+			ret.Resize(dx.Shape());
+
+			src.PreprocessDiff(dx);
 
 			if (TDeviceType == CPU)
 			{
