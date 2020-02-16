@@ -48,6 +48,7 @@ namespace EDX
 			static const int MaxArraySize = 5;
 			int x[MaxArraySize];
 			int mSize = 0;
+			bool mTransposed = false;
 
 			TENSOR_INLINE TensorShape()
 			{
@@ -221,7 +222,6 @@ namespace EDX
 			TensorShape mShape;
 			TensorShape mStrides;
 			int mLinearSize;
-			bool mTransposed = false;
 
 		public:
 			__forceinline TensorParams()
@@ -289,7 +289,7 @@ namespace EDX
 					}
 				}
 
-				mTransposed = true;
+				mShape.mTransposed = true;
 			}
 
 			template<typename... Index>
@@ -452,7 +452,7 @@ namespace EDX
 
 			TENSOR_INLINE bool IsTransposed() const
 			{
-				return mTransposed;
+				return mShape.mTransposed;
 			}
 
 		private:

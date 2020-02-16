@@ -47,6 +47,8 @@ struct TBinaryExp : public TExp<TBinaryExp<TOp, TLhs, TRhs>>
 	mutable Tensorf value;
 	mutable Tensorf leftVal;
 	mutable Tensorf rightVal;
+	mutable float leftBroadcastFactor = 1.0f;
+	mutable float rightBroadcastFactor = 1.0f;
 
 	TBinaryExp(const TLhs& _lhs, const TRhs& _rhs)
 		: lhs(_lhs.Self())
@@ -84,7 +86,7 @@ struct TBinaryExp : public TExp<TBinaryExp<TOp, TLhs, TRhs>>
 		float rightDiff = rhs.ForwardDiff(i, broadcastIndex, dx);
 		float right = rightVal.Empty() ? rhs.Eval(i, broadcastIndex) : rightVal.Eval(i, broadcastIndex);
 
-		return TOp::Diff(leftDiff, left, rightDiff, right);
+		return TOp::Diff(leftDiff, left, rightDiff, right, leftBroadcastFactor, rightBroadcastFactor);
 	}
 
 	__forceinline TensorShape Shape() const
@@ -111,15 +113,20 @@ struct TBinaryExp : public TExp<TBinaryExp<TOp, TLhs, TRhs>>
 			if (leftShape == Shape())
 			{
 				leftVal = Tensorf::Unbroadcast(lhs.GetValue(), rightShape);
+				leftBroadcastFactor = leftShape.LinearSize() / leftVal.LinearSize();
 			}
 			else if (rightShape == Shape())
 			{
 				rightVal = Tensorf::Unbroadcast(rhs.GetValue(), leftShape);
+				rightBroadcastFactor = rightShape.LinearSize() / rightVal.LinearSize();
 			}
 			else
 			{
 				leftVal = Tensorf::Unbroadcast(lhs.GetValue(), rightShape);
 				rightVal = Tensorf::Unbroadcast(rhs.GetValue(), leftShape);
+
+				leftBroadcastFactor = leftShape.LinearSize() / leftVal.LinearSize();
+				rightBroadcastFactor = rightShape.LinearSize() / rightVal.LinearSize();
 			}
 		}
 
@@ -137,22 +144,9 @@ struct AddOp
 		return a + b;
 	}
 
-	TENSOR_INLINE static float Diff(float da, float a, float db, float b)
+	TENSOR_INLINE static float Diff(float da, float a, float db, float b, float factorA, float factorB)
 	{
-		return da + db;
-	}
-};
-
-struct MinusOp
-{
-	TENSOR_INLINE static float Exec(float a, float b)
-	{
-		return a - b;
-	}
-
-	TENSOR_INLINE static float Diff(float da, float a, float db, float b)
-	{
-		return da - db;
+		return da * factorB + db * factorA;
 	}
 };
 
@@ -163,22 +157,9 @@ struct MulOp
 		return a * b;
 	}
 
-	TENSOR_INLINE static float Diff(float da, float a, float db, float b)
+	TENSOR_INLINE static float Diff(float da, float a, float db, float b, float factorA, float factorB)
 	{
 		return da * b + db * a;
-	}
-};
-
-struct DivOp
-{
-	TENSOR_INLINE static float Exec(float a, float b)
-	{
-		return a / b;
-	}
-
-	TENSOR_INLINE static float Diff(float da, float a, float db, float b)
-	{
-		return (da * b + db * a) / (b * b);
 	}
 };
 
@@ -190,41 +171,22 @@ struct ReluGradOp
 	}
 };
 
-// template binary operation, works for any expressions
-template<typename TOp, typename TLhs, typename TRhs>
-inline TBinaryExp<TOp, TLhs, TRhs> ElementWiseBinaryOpExpression(const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
-{
-	return TBinaryExp<TOp, TLhs, TRhs>(lhs.Self(), rhs.Self());
-}
-
 template<typename TLhs, typename TRhs>
 inline TBinaryExp<AddOp, TLhs, TRhs> operator + (const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
 {
-	return ElementWiseBinaryOpExpression<AddOp>(lhs, rhs);
-}
-
-template<typename TLhs, typename TRhs>
-inline TBinaryExp<MinusOp, TLhs, TRhs> operator - (const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
-{
-	return ElementWiseBinaryOpExpression<MinusOp>(lhs, rhs);
+	return TBinaryExp<AddOp, TLhs, TRhs>(lhs.Self(), rhs.Self());
 }
 
 template<typename TLhs, typename TRhs>
 inline TBinaryExp<MulOp, TLhs, TRhs> operator * (const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
 {
-	return ElementWiseBinaryOpExpression<MulOp>(lhs, rhs);
-}
-
-template<typename TLhs, typename TRhs>
-inline TBinaryExp<DivOp, TLhs, TRhs> operator / (const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
-{
-	return ElementWiseBinaryOpExpression<DivOp>(lhs, rhs);
+	return TBinaryExp<MulOp, TLhs, TRhs>(lhs.Self(), rhs.Self());
 }
 
 template<typename TLhs, typename TRhs>
 inline TBinaryExp<ReluGradOp, TLhs, TRhs> ReluGradExp(const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
 {
-	return ElementWiseBinaryOpExpression<ReluGradOp>(lhs, rhs);
+	return TBinaryExp<ReluGradOp, TLhs, TRhs>(lhs.Self(), rhs.Self());
 }
 
 template<typename TOp, typename TParam>
@@ -282,14 +244,38 @@ struct TUnaryExp : public TExp<TUnaryExp<TOp, TParam>>
 	{
 		return value;
 	}
+
+	__forceinline void PreprocessDiff(const Tensorf& dx) const
+	{
+		return param.PreprocessDiff(dx);
+	}
 };
 
-// template binary operation, works for any expressions
-template<typename TOp, typename TParam>
-inline TUnaryExp<TOp, TParam> ElementWiseUnaryOpExpression(const TExp<TParam>& param)
+struct NegateOp
 {
-	return TUnaryExp<TOp, TParam>(param.Self());
-}
+	TENSOR_INLINE static float Exec(float val)
+	{
+		return -val;
+	}
+
+	TENSOR_INLINE static float Diff(float val)
+	{
+		return -val;
+	}
+};
+
+struct InvOp
+{
+	TENSOR_INLINE static float Exec(float val)
+	{
+		return 1.0f / val;
+	}
+
+	TENSOR_INLINE static float Diff(float val)
+	{
+		return -1.0f / (val * val);
+	}
+};
 
 struct ExpOp
 {
@@ -409,59 +395,70 @@ struct AbsOp
 	}
 };
 
+template<typename TLhs, typename TRhs>
+inline TBinaryExp<AddOp, TLhs, TUnaryExp<NegateOp, TRhs>> operator - (const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
+{
+	return TBinaryExp<AddOp, TLhs, TUnaryExp<NegateOp, TRhs>>(lhs.Self(), TUnaryExp<NegateOp, TRhs>(rhs.Self()));
+}
+
+template<typename TLhs, typename TRhs>
+inline TBinaryExp<MulOp, TLhs, TUnaryExp<InvOp, TRhs>> operator / (const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
+{
+	return TBinaryExp<MulOp, TLhs, TUnaryExp<InvOp, TRhs>>(lhs.Self(), TUnaryExp<InvOp, TRhs>(rhs.Self()));
+}
 
 template<typename TParam>
 inline TUnaryExp<ExpOp, TParam> ExponentExp(const TExp<TParam>& param)
 {
-	return ElementWiseUnaryOpExpression<ExpOp>(param);
+	return TUnaryExp<ExpOp, TParam>(param.Self());
 }
 
 template<typename TParam>
 inline TUnaryExp<SqrtOp, TParam> SqrtExp(const TExp<TParam>& param)
 {
-	return ElementWiseUnaryOpExpression<SqrtOp>(param);
+	return TUnaryExp<SqrtOp, TParam>(param.Self());
 }
 
 template<typename TParam>
 inline TUnaryExp<SquareOp, TParam> SquareExp(const TExp<TParam>& param)
 {
-	return ElementWiseUnaryOpExpression<SquareOp>(param);
+	return TUnaryExp<SquareOp, TParam>(param.Self());
 }
 
 template<typename TParam>
 inline TUnaryExp<LogOp, TParam> LogExp(const TExp<TParam>& param)
 {
-	return ElementWiseUnaryOpExpression<LogOp>(param);
+	return TUnaryExp<LogOp, TParam>(param.Self());
 }
 
 template<typename TParam>
 inline TUnaryExp<SinOp, TParam> SinExp(const TExp<TParam>& param)
 {
-	return ElementWiseUnaryOpExpression<SinOp>(param);
+	return TUnaryExp<SinOp, TParam>(param.Self());
 }
 
 template<typename TParam>
 inline TUnaryExp<CosOp, TParam> CosExp(const TExp<TParam>& param)
 {
-	return ElementWiseUnaryOpExpression<CosOp>(param);
+	return TUnaryExp<CosOp, TParam>(param.Self());
 }
 
 template<typename TParam>
 inline TUnaryExp<TanOp, TParam> TanExp(const TExp<TParam>& param)
 {
-	return ElementWiseUnaryOpExpression<TanOp>(param);
+	return TUnaryExp<TanOp, TParam>(param.Self());
 }
 
 template<typename TParam>
 inline TUnaryExp<AbsOp, TParam> AbsExp(const TExp<TParam>& param)
 {
-	return ElementWiseUnaryOpExpression<AbsOp>(param);
+	return TUnaryExp<AbsOp, TParam>(param.Self());
 }
 
 template<typename TParam>
 inline TUnaryExp<ReluOp, TParam> ReluActivateExp(const TExp<TParam>& param)
 {
-	return ElementWiseUnaryOpExpression<ReluOp>(param);
+	return TUnaryExp<ReluOp, TParam>(param.Self());
 }
 
 struct TConstantExp : public TExp<TConstantExp>
@@ -549,7 +546,6 @@ struct TDotExp : public TExp<TDotExp<TLhs, TRhs>>
 			value.Resize(shape);
 		}
 
-
 		Tensorf left = lhs;
 		Tensorf right = rhs;
 		value = Tensorf::Dot(left, right);
@@ -574,7 +570,6 @@ struct TProjectExp : public TExp<TProjectExp<TOp, TOperand>>
 	bool keepDim;
 
 	mutable Tensorf value;
-	mutable Tensorf gradValue;
 
 	TProjectExp(const TOperand& _operand, TOp _op, const float _initVal, const TensorShape& _axes, const bool& _keepDim)
 		: operand(_operand.Self())
@@ -631,8 +626,7 @@ struct TProjectExp : public TExp<TProjectExp<TOp, TOperand>>
 
 	__forceinline void PreprocessDiff(const Tensorf& dx) const
 	{
-		Tensorf diff = Backward(operand, dx);
-		gradValue = Tensorf::ProjectionOp<TOp>(diff, axes, keepDim, op, initVal);
+		Backward(operand, dx);
 
 		return;
 	}
