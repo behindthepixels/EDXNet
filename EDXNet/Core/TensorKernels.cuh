@@ -23,27 +23,6 @@ void InvokeExecuteExpression(const ExpType& rhs, T* pData, const TensorParams& t
 	ExecuteExpressionKernel<<<gridDim, blockDim>>>(rhs, pData, tensorIndex);
 }
 
-template<typename ExpType, typename T, typename TensorT>
-__global__ void ForwardDiffKernel(const ExpType rhs, T* pData, const TensorParams tensorIndex, const TensorT dx)
-{
-	const int i = threadIdx.x + blockIdx.x * blockDim.x;
-
-	if (i >= tensorIndex.LinearSize())
-		return;
-
-	pData[i] = rhs.ForwardDiff(i, tensorIndex, dx);
-}
-
-template<typename ExpType, typename T, typename TensorT>
-void InvokeForwardDiff(const ExpType& rhs, T* pData, const TensorParams& tensorIndex, const TensorT& dx)
-{
-	const int linearSize = tensorIndex.LinearSize();
-	const int blockDim = 256;
-	const int gridDim = (linearSize + blockDim - 1) / blockDim;
-
-	ForwardDiffKernel << <gridDim, blockDim >> > (rhs, pData, tensorIndex, dx.Self());
-}
-
 template<typename Op, typename TensorT>
 __global__ void ElementWiseBinaryOpInplaceKernel(TensorT lhs, const TensorT rhs, Op op)
 {
