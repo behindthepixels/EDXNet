@@ -810,7 +810,7 @@ __forceinline auto Unbroadcast(const TExp<TOperand>& tensor, const TensorShape& 
 		}
 	}
 
-	return SumExp(tens, axes, false);
+	return SumExp(tens, axes, true);
 }
 
 template<typename TOperand>
