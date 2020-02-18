@@ -4,7 +4,7 @@ namespace EDX
 {
 	namespace DeepLearning
 	{
-		Symbol* Sum::Gradient(Symbol* pUpperGrads) const
+		Symbol* SumSymbol::Gradient(Symbol* pUpperGrads) const
 		{
 			Array<Symbol*> pGradInput;
 			for (int i = 0; i < mNumInputs; i++)

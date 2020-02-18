@@ -18,8 +18,8 @@ namespace EDX
 			const Tensorf& inputValue = mInputs[0]->GetOutput();
 			const Tensorf& labels = mInputs[1]->GetOutput();
 
-			mProbs = TensorExpr::Exp(inputValue - TensorExpr::Max(inputValue, { 1 }, true));
-			mProbs /= TensorExpr::Sum(mProbs, { 1 }, true);
+			mProbs = Exp(inputValue - Max(inputValue, { 1 }, true));
+			mProbs /= Sum(mProbs, { 1 }, true);
 
 			const int N = inputValue.Shape(0);
 			mCorrectProbs.Resize(N);
@@ -41,7 +41,7 @@ namespace EDX
 
 			// Loss
 			Tensorf& output = GetOutput(0);
-			output = Scalar(-1.0f) * TensorExpr::Sum(TensorExpr::Log(mCorrectProbs)) / Scalar(N);
+			output = Scalar(-1.0f) * Sum(Log(mCorrectProbs)) / Scalar(N);
 		}
 
 		__global__ void SoftmaxGradKernel(const Tensorf labels, Tensorf probs)
@@ -58,8 +58,8 @@ namespace EDX
 			const Tensorf& inputValue = mInputs[0]->GetOutput();
 			const Tensorf& labels = mInputs[1]->GetOutput();
 
-			mProbs = TensorExpr::Exp(inputValue - TensorExpr::Max(inputValue, { 1 }, true));
-			mProbs /= TensorExpr::Sum(mProbs, { 1 }, true);
+			mProbs = Exp(inputValue - Max(inputValue, { 1 }, true));
+			mProbs /= Sum(mProbs, { 1 }, true);
 
 			const int N = inputValue.Shape(0);
 			if (inputValue.GetDeviceType() == CPU)

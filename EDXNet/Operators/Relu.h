@@ -28,10 +28,10 @@ namespace EDX
 			Symbol* Gradient(Symbol* pUpperGrads) const override;
 		};
 
-		class ReluGradient : public SymbolBase<2, 1>
+		class ReluGradientSymbol : public SymbolBase<2, 1>
 		{
 		public:
-			ReluGradient(Symbol* pInput, Symbol* pUpperGradients)
+			ReluGradientSymbol(Symbol* pInput, Symbol* pUpperGradients)
 			{
 				mInputs[0] = pInput;
 				mInputs[1] = pUpperGradients;

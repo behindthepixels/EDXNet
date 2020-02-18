@@ -14,7 +14,7 @@ namespace EDX
 			mSymbolToGradientMap.Clear();
 
 			MultiMap<Symbol*, Symbol*> upperGradientsMap;
-			upperGradientsMap.Add(mpRoot, NeuralNet::Create<Ones>(mpRoot));
+			upperGradientsMap.Add(mpRoot, NeuralNet::Create<OnesSymbol>(mpRoot));
 			mpRoot->SetGradientIndex(0);
 
 			// Traverse the graph in reverse topological order
@@ -26,7 +26,7 @@ namespace EDX
 				upperGradientsMap.MultiFind(pCurrentSymbol, upperGradients);
 
 				Symbol* summedGrad = upperGradients.Size() > 1 ?
-					NeuralNet::Create<Sum>(upperGradients) :
+					NeuralNet::Create<SumSymbol>(upperGradients) :
 					upperGradients[0];
 
 				Symbol* pGradientSymbol = pCurrentSymbol->Gradient(summedGrad);

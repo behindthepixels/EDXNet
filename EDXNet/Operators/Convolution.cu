@@ -257,7 +257,7 @@ namespace EDX
 			Tensorf& biases = mInputs[2]->GetOutput();
 
 			weights = Tensorf::RandomNormalDistribution(0.1f, mNumFilter, channel, kernelHeight, kernelWidth);
-			biases = Scalar(0.1f) * TensorExpr::Ones(mNumFilter);
+			biases = Scalar(0.1f) * Ones(mNumFilter);
 
 			Tensorf& output = GetOutput();
 			output.Resize(InferShape());

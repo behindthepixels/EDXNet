@@ -8,16 +8,16 @@ namespace EDX
 		{
 			const Tensorf& inputValue = mInputs[0]->GetOutput();
 
-			GetOutput() = TensorExpr::ReluActivate(inputValue);
+			GetOutput() = ReluActivate(inputValue);
 		}
 
-		void ReluGradient::Evaluate()
+		void ReluGradientSymbol::Evaluate()
 		{
 			const Tensorf& inputValue = mInputs[0]->GetOutput();
 			const Tensorf& upperGrads = mInputs[1]->GetOutput();
 
 			Tensorf& output = GetOutput();
-			output = TensorExpr::ReluGradient(upperGrads, inputValue);
+			output = ReluGradient(upperGrads, inputValue);
 
 			mInputs[0]->SetGradientIndex(0);
 		}

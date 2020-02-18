@@ -15,7 +15,6 @@
 
 using namespace EDX;
 using namespace DeepLearning;
-using namespace Algorithm;
 
 
 void TestFullyConnected()
@@ -51,13 +50,13 @@ void TestFullyConnected()
 	Tensorf correctResult = Tensorf({	{ 1.49834967f, 1.70660132f, 1.91485297f },
 										{ 3.25553199f, 3.5141327f, 3.77273342f } });
 
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(result - correctResult))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(result - correctResult))) << "\n";
 
 	Tensorf& dataGrad = symbolsToEvaluate[0]->GetOutput(data->GetGradientIndex());
 	Tensorf& weightsGrad = symbolsToEvaluate[1]->GetOutput(weights->GetGradientIndex());
 	Tensorf& biasesGrad = symbolsToEvaluate[2]->GetOutput(biases->GetGradientIndex());
 
-	Tensorf upperGrads = TensorExpr::Ones(result.Shape());
+	Tensorf upperGrads = Ones(result.Shape());
 	Tensorf dataNumericalGrad = NumericalGradientEval([&]() -> Tensorf
 		{
 			net.Execute({ fullyConnected });
@@ -77,9 +76,9 @@ void TestFullyConnected()
 		},
 		biases, upperGrads);
 
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(dataGrad - dataNumericalGrad))) << "\n";
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(weightsGrad - numericalWeightsGrad))) << "\n";
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(biasesGrad - numericalBiasesGrad))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(dataGrad - dataNumericalGrad))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(weightsGrad - numericalWeightsGrad))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(biasesGrad - numericalBiasesGrad))) << "\n";
 
 	NeuralNet::Release();
 }
@@ -123,13 +122,13 @@ bool TestConvolution()
 			{{2.36270298f, 2.36904306f},
 			{2.38090835f, 2.38247847f}}}} );
 
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(result - correctResult))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(result - correctResult))) << "\n";
 
 	Tensorf& dataGrad = symbolsToEvaluate[0]->GetOutput(data->GetGradientIndex());
 	Tensorf& weightsGrad = symbolsToEvaluate[1]->GetOutput(weights->GetGradientIndex());
 	Tensorf& biasesGrad = symbolsToEvaluate[2]->GetOutput(biases->GetGradientIndex());
 
-	Tensorf upperGrads = TensorExpr::Ones(result.Shape());
+	Tensorf upperGrads = Ones(result.Shape());
 	Tensorf dataNumericalGrad = NumericalGradientEval([&]() -> Tensorf
 		{
 			net.Execute({ convolution });
@@ -149,9 +148,9 @@ bool TestConvolution()
 		},
 		biases, upperGrads);
 
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(dataGrad - dataNumericalGrad))) << "\n";
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(weightsGrad - numericalWeightsGrad))) << "\n";
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(biasesGrad - numericalBiasesGrad))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(dataGrad - dataNumericalGrad))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(weightsGrad - numericalWeightsGrad))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(biasesGrad - numericalBiasesGrad))) << "\n";
 
 	NeuralNet::Release();
 
@@ -177,11 +176,11 @@ bool TestRelu()
 									{ 0.0f, 0.0f, 0.04545455f, 0.13636364f, },
 									{ 0.22727273f, 0.31818182f, 0.40909091f, 0.5f, } });
 
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(result - correctResult))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(result - correctResult))) << "\n";
 
 	Tensorf& dx = symbolsToEvaluate[0]->GetOutput(0);
 
-	Tensorf upperGrads = TensorExpr::Ones(result.Shape());
+	Tensorf upperGrads = Ones(result.Shape());
 	Tensorf dxNumerical = NumericalGradientEval([&]() -> Tensorf
 	{
 		net.Execute({ relu });
@@ -189,7 +188,7 @@ bool TestRelu()
 	},
 	x, upperGrads);
 
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(dx - dxNumerical))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(dx - dxNumerical))) << "\n";
 
 	NeuralNet::Release();
 
@@ -225,11 +224,11 @@ void TestPooling()
 											{ { 0.32631579f, 0.34105263f },
 											{ 0.38526316f, 0.4f } } } });
 
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(result - correctResult))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(result - correctResult))) << "\n";
 
 	Tensorf& dx = symbolsToEvaluate[0]->GetOutput(0);
 
-	Tensorf upperGrads = TensorExpr::Ones(result.Shape());
+	Tensorf upperGrads = Ones(result.Shape());
 	Tensorf dxNumerical = NumericalGradientEval([&]() -> Tensorf
 		{
 			net.Execute({ pooling });
@@ -237,7 +236,7 @@ void TestPooling()
 		},
 		x, upperGrads);
 
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(dx - dxNumerical))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(dx - dxNumerical))) << "\n";
 
 	NeuralNet::Release();
 }
@@ -252,7 +251,7 @@ void TestBatchNormalization()
 		//Tensorf X = Tensorf::RandomNormalDistribution(1.0, N, D1);
 		//Tensorf W1 = Tensorf::RandomNormalDistribution(1.0, D1, D2);
 		//Tensorf W2 = Tensorf::RandomNormalDistribution(1.0, D2, D3);
-		//Tensorf a = Tensorf::Dot(TensorExpr::ReluActivate(Tensorf::Dot(X, W1)), W2);
+		//Tensorf a = Tensorf::Dot(ReluActivate(Tensorf::Dot(X, W1)), W2);
 
 		Tensorf a = { { 0.438f,0.324f,0.536f },{ 0.12f,0.453f,0.25f },{ 0.983f,0.43f,0.61f } };
 
@@ -283,14 +282,14 @@ void TestBatchNormalization()
 		//// Means should be close to zero and stds close to one
 		//Tensorf normalizedMean = Tensorf::Mean(normalized, { 0 });
 		//Tensorf normalizedStds = Tensorf::StandardDeviation(normalized, { 0 });
-		//std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(normalizedMean - Tensorf({ 11,12,13 })))) << "\n";
-		//std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(normalizedStds - Tensorf({ 1,2,3 })))) << "\n";
+		//std::cout << Tensorf::Sum(Tensorf(Abs(normalizedMean - Tensorf({ 11,12,13 })))) << "\n";
+		//std::cout << Tensorf::Sum(Tensorf(Abs(normalizedStds - Tensorf({ 1,2,3 })))) << "\n";
 
 		Tensorf& dx = symbolsToEvaluate[0]->GetOutput(input->GetGradientIndex());
 		Tensorf& dScale = symbolsToEvaluate[1]->GetOutput(scale->GetGradientIndex());
 		Tensorf& dBias = symbolsToEvaluate[2]->GetOutput(bias->GetGradientIndex());
 
-		Tensorf upperGrads = TensorExpr::Ones(normalized.Shape());
+		Tensorf upperGrads = Ones(normalized.Shape());
 		Tensorf dxNumeric = NumericalGradientEval([&]() -> Tensorf
 			{
 				Tensorf& runningMean = BatchNorm->GetOutput(1);
@@ -328,9 +327,9 @@ void TestBatchNormalization()
 			},
 			bias, upperGrads, 1e-3f);
 
-		std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(dx - dxNumeric))) << "\n";
-		std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(dScale - dScaleNumeric))) << "\n";
-		std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(dBias - dBiasNumeric))) << "\n";
+		std::cout << Tensorf::Sum(Tensorf(Abs(dx - dxNumeric))) << "\n";
+		std::cout << Tensorf::Sum(Tensorf(Abs(dScale - dScaleNumeric))) << "\n";
+		std::cout << Tensorf::Sum(Tensorf(Abs(dBias - dBiasNumeric))) << "\n";
 
 		NeuralNet::Release();
 	}
@@ -357,11 +356,11 @@ void TestSoftmax()
 	Tensorf result = softmax->GetOutput();
 	Tensorf correctResult = 2.3f;
 
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(result - correctResult))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(result - correctResult))) << "\n";
 
 	Tensorf& dx = symbolsToEvaluate[0]->GetOutput(0);
 
-	Tensorf upperGrads = TensorExpr::Ones(result.Shape());
+	Tensorf upperGrads = Ones(result.Shape());
 	Tensorf dxNumerical = NumericalGradientEval([&]() -> Tensorf
 		{
 			net.Execute({ softmax });
@@ -369,7 +368,7 @@ void TestSoftmax()
 		},
 		x, upperGrads);
 
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(dx - dxNumerical))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(dx - dxNumerical))) << "\n";
 
 	NeuralNet::Release();
 }
@@ -435,9 +434,9 @@ void TestAdam()
 		{0.67473684f, 0.69421053f, 0.71368421f, 0.73315789f, 0.75263158f},
 		{0.77210526f, 0.79157895f, 0.81105263f, 0.83052632f, 0.85f} };
 
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(w - expected_next_w))) << "\n";
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(adam.mMapV[&w] - expected_v))) << "\n";
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(adam.mMapM[&w] - expected_m))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(w - expected_next_w))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(adam.mMapV[&w] - expected_v))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(adam.mMapM[&w] - expected_m))) << "\n";
 }
 
 void TestContentLoss()
@@ -461,7 +460,7 @@ void TestContentLoss()
 
 	Tensorf& imageGrad = symbolsToEvaluate[0]->GetOutput(imageFeature->GetGradientIndex());
 
-	Tensorf upperGrads = TensorExpr::Ones(1);
+	Tensorf upperGrads = Ones(1);
 	Tensorf imageNumericalGrad = NumericalGradientEval([&]() -> Tensorf
 	{
 		net.Execute({ contentLoss });
@@ -469,7 +468,7 @@ void TestContentLoss()
 	},
 		imageFeature, upperGrads, 0.1f);
 
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(imageGrad - imageNumericalGrad))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(imageGrad - imageNumericalGrad))) << "\n";
 
 	NeuralNet::Release();
 }
@@ -495,7 +494,7 @@ void TestStyleLoss()
 
 	Tensorf& imageGrad = symbolsToEvaluate[0]->GetOutput(imageFeature->GetGradientIndex());
 
-	Tensorf upperGrads = TensorExpr::Ones(1);
+	Tensorf upperGrads = Ones(1);
 	Tensorf imageNumericalGrad = NumericalGradientEval([&]() -> Tensorf
 		{
 			net.Execute({ styleLoss });
@@ -503,7 +502,7 @@ void TestStyleLoss()
 		},
 		imageFeature, upperGrads, 0.1f);
 
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(imageGrad - imageNumericalGrad))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(imageGrad - imageNumericalGrad))) << "\n";
 
 	NeuralNet::Release();
 }
@@ -526,7 +525,7 @@ void TestTotalVariationLoss()
 
 	Tensorf& imageGrad = symbolsToEvaluate[0]->GetOutput(image->GetGradientIndex());
 
-	Tensorf upperGrads = TensorExpr::Ones(1);
+	Tensorf upperGrads = Ones(1);
 	Tensorf imageNumericalGrad = NumericalGradientEval([&]() -> Tensorf
 		{
 			net.Execute({ tvLoss });
@@ -534,7 +533,7 @@ void TestTotalVariationLoss()
 		},
 		image, upperGrads, 0.001f);
 
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(imageGrad - imageNumericalGrad))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(imageGrad - imageNumericalGrad))) << "\n";
 
 	NeuralNet::Release();
 }
@@ -588,23 +587,7 @@ void main()
 
 	//TestMattingLaplacian();
 
-	//TestCUDA();
-
-
-	Tensorf A = { 5, 5, 5, 5, 5 };
-	Tensorf B = { 2, 2, 2, 2, 2 };
-	Tensorf C = { 7, 7, 7, 7, 7 };
-
-	auto exp = TensorExpr::Sin(A * A) * TensorExpr::Tan(A) + TensorExpr::Square(TensorExpr::Cos(A * C)) + B * C;
-	Tensorf results = exp;
-
-	Tensorf diff = Backward(exp, A);
-	Tensorf numericalDiff = NumericalGradientEval(exp, A);
-
-	std::cout << diff << "\n";
-	std::cout << numericalDiff << "\n";
-
-
+	TestCUDA();
 
 	Assertf(!_CrtDumpMemoryLeaks(), "Memory leak detected. See debug output for details");
 }

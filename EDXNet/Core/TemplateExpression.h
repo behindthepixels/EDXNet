@@ -20,15 +20,20 @@ struct TScalarExp : public TExp<TScalarExp<T>>
 		return val;
 	}
 
-	TENSOR_INLINE float ForwardDiff(const int i, const TensorParams& broadcastIndex, const Tensorf& dx) const
+	template<typename TGrad>
+	void Backward(const TExp<TGrad>& inGrad) const
 	{
-		return val;
 	}
 
 	__forceinline TensorShape Shape() const
 	{
 		return{ 1 };
 	}
+
+	__forceinline void Preprocess(const bool bForceRecompute = false) const
+	{
+	}
+
 };
 
 template<typename T>
@@ -44,12 +49,6 @@ struct TBinaryExp : public TExp<TBinaryExp<TOp, TLhs, TRhs>>
 	const TLhs lhs;
 	const TRhs rhs;
 
-	mutable Tensorf value;
-	mutable Tensorf leftVal;
-	mutable Tensorf rightVal;
-	mutable float leftBroadcastFactor = 1.0f;
-	mutable float rightBroadcastFactor = 1.0f;
-
 	TBinaryExp(const TLhs& _lhs, const TRhs& _rhs)
 		: lhs(_lhs.Self())
 		, rhs(_rhs.Self())
@@ -59,14 +58,12 @@ struct TBinaryExp : public TExp<TBinaryExp<TOp, TLhs, TRhs>>
 	TBinaryExp(const TBinaryExp& _rhs)
 		: lhs(_rhs.lhs.Self())
 		, rhs(_rhs.rhs.Self())
-		, value(_rhs.value)
 	{
 	}
 
 	TBinaryExp(const TBinaryExp&& _rhs)
 		: lhs(Move(_rhs.lhs.Self()))
 		, rhs(Move(_rhs.rhs.Self()))
-		, value(Move(_rhs.value))
 	{
 	}
 
@@ -74,65 +71,38 @@ struct TBinaryExp : public TExp<TBinaryExp<TOp, TLhs, TRhs>>
 	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
 	{
 		float val = TOp::Exec(lhs.Eval(i, broadcastIndex), rhs.Eval(i, broadcastIndex));
-		value.Set(i, broadcastIndex, val);
 		return val;
 	}
 
-	TENSOR_INLINE float ForwardDiff(const int i, const TensorParams& broadcastIndex, const Tensorf& dx) const
+	template<typename TGrad>
+	void Backward(const TExp<TGrad>& inGrad) const
 	{
-		float leftDiff = lhs.ForwardDiff(i, broadcastIndex, dx);
-		float left = leftVal.Empty() ? lhs.Eval(i, broadcastIndex) : leftVal.Eval(i, broadcastIndex);
+		const TGrad& grad = inGrad.Self();
+		Assert(grad.Shape() == Shape());
 
-		float rightDiff = rhs.ForwardDiff(i, broadcastIndex, dx);
-		float right = rightVal.Empty() ? rhs.Eval(i, broadcastIndex) : rightVal.Eval(i, broadcastIndex);
+		TensorShape leftShape = lhs.Shape();
+		auto leftGrad = Unbroadcast(TOp::Backward(rhs, grad), leftShape);
 
-		return TOp::Diff(leftDiff, left, rightDiff, right, leftBroadcastFactor, rightBroadcastFactor);
+		TensorShape rightShape = rhs.Shape();
+		auto rightGrad = Unbroadcast(TOp::Backward(lhs, grad), rightShape);
+
+		lhs.Backward(leftGrad);
+		rhs.Backward(rightGrad);
+
+		return;
 	}
 
 	__forceinline TensorShape Shape() const
 	{
 		TensorShape shape = BroadcastShape(lhs.Shape(), rhs.Shape());
 
-		if (value.Empty())
-			value.Resize(shape);
-
 		return shape;
 	}
 
-	__forceinline const Tensorf& GetValue() const
+	__forceinline void Preprocess(const bool bForceRecompute = false) const
 	{
-		return value;
-	}
-
-	__forceinline void PreprocessDiff(const Tensorf& dx) const
-	{
-		TensorShape leftShape = lhs.Shape();
-		TensorShape rightShape = rhs.Shape();
-		if (leftShape != rightShape)
-		{
-			if (leftShape == Shape())
-			{
-				leftVal = Tensorf::Unbroadcast(lhs.GetValue(), rightShape);
-				leftBroadcastFactor = leftShape.LinearSize() / leftVal.LinearSize();
-			}
-			else if (rightShape == Shape())
-			{
-				rightVal = Tensorf::Unbroadcast(rhs.GetValue(), leftShape);
-				rightBroadcastFactor = rightShape.LinearSize() / rightVal.LinearSize();
-			}
-			else
-			{
-				leftVal = Tensorf::Unbroadcast(lhs.GetValue(), rightShape);
-				rightVal = Tensorf::Unbroadcast(rhs.GetValue(), leftShape);
-
-				leftBroadcastFactor = leftShape.LinearSize() / leftVal.LinearSize();
-				rightBroadcastFactor = rightShape.LinearSize() / rightVal.LinearSize();
-			}
-		}
-
-		lhs.PreprocessDiff(dx);
-		rhs.PreprocessDiff(dx);
-
+		lhs.Preprocess(bForceRecompute);
+		rhs.Preprocess(bForceRecompute);
 		return;
 	}
 };
@@ -144,9 +114,10 @@ struct AddOp
 		return a + b;
 	}
 
-	TENSOR_INLINE static float Diff(float da, float a, float db, float b, float factorA, float factorB)
+	template<typename TVal, typename TGrad>
+	static auto Backward(const TExp<TVal>& value, const TExp<TGrad>& grad)
 	{
-		return da * factorB + db * factorA;
+		return grad.Self();
 	}
 };
 
@@ -157,9 +128,10 @@ struct MulOp
 		return a * b;
 	}
 
-	TENSOR_INLINE static float Diff(float da, float a, float db, float b, float factorA, float factorB)
+	template<typename TVal, typename TGrad>
+	static auto Backward(const TExp<TVal>& value, const TExp<TGrad>& grad)
 	{
-		return da * b + db * a;
+		return value.Self() * grad.Self();
 	}
 };
 
@@ -168,6 +140,12 @@ struct ReluGradOp
 	TENSOR_INLINE static float Exec(float a, float b)
 	{
 		return b >= 0.0f ? a : 0.0f;
+	}
+
+	template<typename TVal, typename TGrad>
+	static auto Backward(const TExp<TVal>& value, const TExp<TGrad>& grad)
+	{
+		return value.Self() * grad.Self();
 	}
 };
 
@@ -194,8 +172,6 @@ struct TUnaryExp : public TExp<TUnaryExp<TOp, TParam>>
 {
 	const TParam param;
 
-	mutable Tensorf value;
-
 	TUnaryExp(const TParam& _param)
 		: param(_param.Self())
 	{
@@ -203,13 +179,11 @@ struct TUnaryExp : public TExp<TUnaryExp<TOp, TParam>>
 
 	TUnaryExp(const TUnaryExp& _rhs)
 		: param(_rhs.param.Self())
-		, value(_rhs.value)
 	{
 	}
 
 	TUnaryExp(TUnaryExp&& _rhs)
 		: param(Move(_rhs.param.Self()))
-		, value(Move(_rhs.value))
 	{
 	}
 
@@ -217,37 +191,28 @@ struct TUnaryExp : public TExp<TUnaryExp<TOp, TParam>>
 	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
 	{
 		float val = TOp::Exec(param.Eval(i, broadcastIndex));
-		value.Set(i, broadcastIndex, val);
 		return val;
 	}
 
-	TENSOR_INLINE float ForwardDiff(const int i, const TensorParams& broadcastIndex, const Tensorf& dx) const
+	template<typename TGrad>
+	void Backward(const TExp<TGrad>& inGrad) const
 	{
-		float diff = param.ForwardDiff(i, broadcastIndex, dx);
+		const TGrad& grad = inGrad.Self();
+		Assert(grad.Shape() == Shape());
 
-		float localDiff = TOp::Diff(param.Eval(i, broadcastIndex));
-
-		return localDiff * diff;
+		return param.Backward(TOp::Backward(param.Self(), grad));
 	}
 
 	__forceinline TensorShape Shape() const
 	{
-		TensorShape shape = param.Shape();
-		if (!value.Empty())
-			return value.Shape();
-		
-		value.Resize(shape);
-		return shape;
+		return param.Shape();
 	}
 
-	__forceinline const Tensorf& GetValue() const
+	__forceinline void Preprocess(const bool bForceRecompute = false) const
 	{
-		return value;
-	}
+		param.Preprocess(bForceRecompute);
 
-	__forceinline void PreprocessDiff(const Tensorf& dx) const
-	{
-		return param.PreprocessDiff(dx);
+		return;
 	}
 };
 
@@ -258,9 +223,10 @@ struct NegateOp
 		return -val;
 	}
 
-	TENSOR_INLINE static float Diff(float val)
+	template<typename TVal, typename TGrad>
+	static auto Backward(const TExp<TVal>& value, const TExp<TGrad>& grad)
 	{
-		return -val;
+		return Scalar(-1) * grad.Self();
 	}
 };
 
@@ -271,9 +237,10 @@ struct InvOp
 		return 1.0f / val;
 	}
 
-	TENSOR_INLINE static float Diff(float val)
+	template<typename TVal, typename TGrad>
+	static auto Backward(const TExp<TVal>& value, const TExp<TGrad>& grad)
 	{
-		return -1.0f / (val * val);
+		return Scalar(-1) / (value.Self() * value.Self()) * grad.Self();
 	}
 };
 
@@ -284,9 +251,10 @@ struct ExpOp
 		return Math::Exp(val);
 	}
 
-	TENSOR_INLINE static float Diff(float val)
+	template<typename TVal, typename TGrad>
+	static auto Backward(const TExp<TVal>& value, const TExp<TGrad>& grad)
 	{
-		return Math::Exp(val);
+		return Exp(value.Self()) * grad.Self();
 	}
 };
 
@@ -297,9 +265,10 @@ struct SqrtOp
 		return Math::Sqrt(val);
 	}
 
-	TENSOR_INLINE static float Diff(float val)
+	template<typename TVal, typename TGrad>
+	static auto Backward(const TExp<TVal>& value, const TExp<TGrad>& grad)
 	{
-		return 0.5f / Math::Sqrt(val);
+		return Scalar(0.5f) / Sqrt(value.Self()) * grad.Self();
 	}
 };
 
@@ -310,9 +279,10 @@ struct SquareOp
 		return Math::Square(val);
 	}
 
-	TENSOR_INLINE static float Diff(float val)
+	template<typename TVal, typename TGrad>
+	static auto Backward(const TExp<TVal>& value, const TExp<TGrad>& grad)
 	{
-		return 2.0 * val;
+		return Scalar(2.0) * value.Self() * grad.Self();
 	}
 };
 
@@ -323,9 +293,10 @@ struct LogOp
 		return Math::Log(val);
 	}
 
-	TENSOR_INLINE static float Diff(float val)
+	template<typename TVal, typename TGrad>
+	static auto Backward(const TExp<TVal>& value, const TExp<TGrad>& grad)
 	{
-		return val == 0.0f ? 0.0f : 1.0f / val;
+		return Inv(value.Self()) * grad.Self();
 	}
 };
 
@@ -336,9 +307,10 @@ struct SinOp
 		return Math::Sin(val);
 	}
 
-	TENSOR_INLINE static float Diff(float val)
+	template<typename TVal, typename TGrad>
+	static auto Backward(const TExp<TVal>& value, const TExp<TGrad>& grad)
 	{
-		return Math::Cos(val);
+		return Cos(value.Self()) * grad.Self();
 	}
 };
 
@@ -349,9 +321,10 @@ struct CosOp
 		return Math::Cos(val);
 	}
 
-	TENSOR_INLINE static float Diff(float val)
+	template<typename TVal, typename TGrad>
+	static auto Backward(const TExp<TVal>& value, const TExp<TGrad>& grad)
 	{
-		return -Math::Sin(val);
+		return -Sin(value.Self()) * grad.Self();
 	}
 };
 
@@ -362,10 +335,10 @@ struct TanOp
 		return Math::Tan(val);
 	}
 
-	TENSOR_INLINE static float Diff(float val)
+	template<typename TVal, typename TGrad>
+	static auto Backward(const TExp<TVal>& value, const TExp<TGrad>& grad)
 	{
-		float cos = Math::Cos(val);
-		return 1.0f / (cos * cos);
+		return Inv(Cos(value.Self()) * Cos(value.Self())) * grad.Self();
 	}
 };
 
@@ -375,11 +348,6 @@ struct ReluOp
 	{
 		return val > 0.0f ? val : 0.0f;
 	}
-
-	TENSOR_INLINE static float Diff(float val)
-	{
-		return val > 0.0f ? 1.0f : 0.0f;
-	}
 };
 
 struct AbsOp
@@ -387,11 +355,6 @@ struct AbsOp
 	TENSOR_INLINE static float Exec(float val)
 	{
 		return Math::Abs(val);
-	}
-
-	TENSOR_INLINE static float Diff(float val)
-	{
-		return val > 0.0f ? 1.0f : -1.0f;
 	}
 };
 
@@ -405,6 +368,18 @@ template<typename TLhs, typename TRhs>
 inline TBinaryExp<MulOp, TLhs, TUnaryExp<InvOp, TRhs>> operator / (const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
 {
 	return TBinaryExp<MulOp, TLhs, TUnaryExp<InvOp, TRhs>>(lhs.Self(), TUnaryExp<InvOp, TRhs>(rhs.Self()));
+}
+
+template<typename TParam>
+inline TUnaryExp<NegateOp, TParam> NegateExp(const TExp<TParam>& param)
+{
+	return TUnaryExp<NegateOp, TParam>(param.Self());
+}
+
+template<typename TParam>
+inline TUnaryExp<InvOp, TParam> InvExp(const TExp<TParam>& param)
+{
+	return TUnaryExp<InvOp, TParam>(param.Self());
 }
 
 template<typename TParam>
@@ -484,14 +459,18 @@ struct TConstantExp : public TExp<TConstantExp>
 		return val;
 	}
 
-	TENSOR_INLINE float ForwardDiff(const int i, const TensorParams& broadcastIndex, const Tensorf& dx) const
+	template<typename TGrad>
+	void Backward(const TExp<TGrad>& inGrad) const
 	{
-		return val;
 	}
 
 	__forceinline TensorShape Shape() const
 	{
 		return shape;
+	}
+
+	__forceinline void Preprocess(const bool bForceRecompute = false) const
+	{
 	}
 };
 
@@ -540,17 +519,40 @@ struct TDotExp : public TExp<TDotExp<TLhs, TRhs>>
 		Assertf(!(leftShape.Size() == 2 && leftShape[1] != rightShape[0]), "Dimension mismatch for tensor multiply.");
 
 		TensorShape shape = { leftShape[0], rightShape[1] };
-		
-		if (value.Empty())
-		{
-			value.Resize(shape);
-		}
-
-		Tensorf left = lhs;
-		Tensorf right = rhs;
-		value = Tensorf::Dot(left, right);
 
 		return shape;
+	}
+
+	__forceinline void Preprocess(const bool bForceRecompute = false) const
+	{
+		lhs.Preprocess(bForceRecompute);
+		rhs.Preprocess(bForceRecompute);
+
+		if (bForceRecompute || value.Empty())
+		{
+			value.Resize(Shape());
+
+			Tensorf left = lhs;
+			Tensorf right = rhs;
+			value = Tensorf::Dot(left, right);
+		}
+
+		return;
+	}
+
+	template<typename TGrad>
+	void Backward(const TExp<TGrad>& inGrad) const
+	{
+		Tensorf left = lhs;
+		Tensorf right = rhs;
+
+		auto leftGrad = Dot(inGrad.Self(), right.GetTransposed());
+		auto rightGrad = Dot(left.GetTransposed(), inGrad);
+
+		lhs.Backward(leftGrad);
+		rhs.Backward(rightGrad);
+
+		return;
 	}
 };
 
@@ -559,6 +561,42 @@ inline TDotExp<TLhs, TRhs> DotExp(const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
 {
 	return TDotExp<TLhs, TRhs>(lhs.Self(), rhs.Self());
 }
+
+template<typename TParam>
+struct TBroadcastExp : public TExp<TBroadcastExp<TParam>>
+{
+	const TParam param;
+	const TensorShape shape;
+
+	TBroadcastExp(const TParam& _param, const TensorShape& _shape)
+		: param(_param)
+		, shape(_shape)
+	{
+	}
+
+	template<typename... TShape>
+	TBroadcastExp(const TParam& _param, TShape... shape)
+		: TBroadcastExp(_val, { shape... })
+	{
+	}
+
+	// evaluation function, evaluate this expression at position i
+	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
+	{
+		return param.Eval(i, broadcastIndex);
+	}
+
+	__forceinline TensorShape Shape() const
+	{
+		return shape;
+	}
+
+	__forceinline void Preprocess(const bool bForceRecompute = false) const
+	{
+		param.Preprocess(bForceRecompute);
+		return;
+	}
+};
 
 template<typename TOp, typename TOperand>
 struct TProjectExp : public TExp<TProjectExp<TOp, TOperand>>
@@ -603,32 +641,45 @@ struct TProjectExp : public TExp<TProjectExp<TOp, TOperand>>
 	// evaluation function, evaluate this expression at position i
 	TENSOR_INLINE float Eval(const int i, const TensorParams& broadcastIndex) const
 	{
-		return value.Eval(i, broadcastIndex);
+		if (axes.Size() > 0)
+			return value.Eval(i, broadcastIndex);
+		else
+			return operand.Eval(i, broadcastIndex);
 	}
 
 	__forceinline TensorShape Shape() const
 	{
-		Tensorf operandVal = operand;
-		value = Tensorf::ProjectionOp<TOp>(operandVal, axes, keepDim, op, initVal);
-
-		return value.Shape();
+		if (axes.Size() > 0)
+		{
+			return Tensorf::ProjectionShape(operand.Shape(), axes, keepDim);
+		}
+		else
+			return operand.Shape();
 	}
 
-	__forceinline const Tensorf& GetValue() const
+	__forceinline void Preprocess(const bool bForceRecompute = false) const
 	{
-		return value;
+		operand.Preprocess(bForceRecompute);
+
+		if (axes.Size() > 0)
+		{
+			if (bForceRecompute || value.Empty())
+			{
+				Tensorf operandVal = operand;
+				value = Tensorf::ProjectionOp<TOp>(operandVal, axes, keepDim, op, initVal);
+			}
+		}
 	}
 
-	TENSOR_INLINE float ForwardDiff(const int i, const TensorParams& broadcastIndex, const Tensorf& dx) const
+	template<typename TGrad>
+	void Backward(const TExp<TGrad>& inGrad) const
 	{
-		return operand.ForwardDiff(i, broadcastIndex, dx);
-	}
+		const TGrad& grad = inGrad.Self();
+		Assert(grad.Shape() == Shape());
 
-	__forceinline void PreprocessDiff(const Tensorf& dx) const
-	{
-		Backward(operand, dx);
+		auto broadcast = TBroadcastExp<TGrad>(inGrad.Self(), operand.Shape());
 
-		return;
+		return operand.Backward(broadcast.Self());
 	}
 };
 
@@ -651,130 +702,166 @@ inline TProjectExp<Algorithm::Max<>, TOperand> MaxExp(const TExp<TOperand>& oper
 	return TProjectExp<Algorithm::Max<>, TOperand>(operand.Self(), Algorithm::Max<>(), float(Math::EDX_NEG_INFINITY), axes, keepDim);
 }
 
-namespace TensorExpr
+template<typename TParam>
+inline TUnaryExp<NegateOp, TParam> operator - (const TExp<TParam>& param)
 {
-	template<typename TParam>
-	__forceinline TUnaryExp<ExpOp, TParam> Exp(const TExp<TParam>& param)
+	return NegateExp(param);
+}
+
+template<typename TParam>
+__forceinline TUnaryExp<InvOp, TParam> Inv(const TExp<TParam>& param)
+{
+	return InvExp(param);
+}
+
+template<typename TParam>
+__forceinline TUnaryExp<ExpOp, TParam> Exp(const TExp<TParam>& param)
+{
+	return ExponentExp(param);
+}
+
+template<typename TParam>
+__forceinline TUnaryExp<SqrtOp, TParam> Sqrt(const TExp<TParam>& param)
+{
+	return SqrtExp(param);
+}
+
+template<typename TParam>
+__forceinline TUnaryExp<SquareOp, TParam> Square(const TExp<TParam>& param)
+{
+	return SquareExp(param);
+}
+
+template<typename TParam>
+__forceinline TUnaryExp<LogOp, TParam> Log(const TExp<TParam>& param)
+{
+	return LogExp(param);
+}
+
+template<typename TParam>
+__forceinline TUnaryExp<SinOp, TParam> Sin(const TExp<TParam>& param)
+{
+	return SinExp(param);
+}
+
+template<typename TParam>
+__forceinline TUnaryExp<CosOp, TParam> Cos(const TExp<TParam>& param)
+{
+	return CosExp(param);
+}
+
+template<typename TParam>
+__forceinline TUnaryExp<TanOp, TParam> Tan(const TExp<TParam>& param)
+{
+	return TanExp(param);
+}
+
+template<typename TParam>
+__forceinline TUnaryExp<AbsOp, TParam> Abs(const TExp<TParam>& param)
+{
+	return AbsExp(param);
+}
+
+template<typename TParam>
+__forceinline TUnaryExp<ReluOp, TParam> ReluActivate(const TExp<TParam>& param)
+{
+	return ReluActivateExp(param);
+}
+
+template<typename TLhs, typename TRhs>
+__forceinline TBinaryExp<ReluGradOp, TLhs, TRhs> ReluGradient(const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
+{
+	return ReluGradExp(lhs, rhs);
+}
+
+template<typename TLhs, typename TRhs>
+__forceinline TDotExp<TLhs, TRhs> Dot(const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
+{
+	return DotExp(lhs, rhs);
+}
+
+template<typename TOperand>
+__forceinline TProjectExp<Algorithm::Plus<>, TOperand> Sum(const TExp<TOperand>& param, const TensorShape& axes = { -1 }, const bool keepDim = false)
+{
+	return SumExp(param, axes, keepDim);
+}
+
+
+template<typename TOperand>
+__forceinline auto Unbroadcast(const TExp<TOperand>& tensor, const TensorShape& target)
+{
+	const TOperand& tens = tensor.Self();
+	TensorShape shape = tens.Shape();
+	//if (shape == target)
+	//	return tens;
+
+	TensorShape axes;
+
+	if (target.LinearSize() == 1)
 	{
-		return ExponentExp(param);
+		axes.Add(-1);
+	}
+	else
+	{
+		for (int i = 0; i < shape.Size(); i++)
+		{
+			if (shape[i] > target[i])
+				axes.Add(i);
+		}
 	}
 
-	template<typename TParam>
-	__forceinline TUnaryExp<SqrtOp, TParam> Sqrt(const TExp<TParam>& param)
-	{
-		return SqrtExp(param);
-	}
+	return SumExp(tens, axes, false);
+}
 
-	template<typename TParam>
-	__forceinline TUnaryExp<SquareOp, TParam> Square(const TExp<TParam>& param)
-	{
-		return SquareExp(param);
-	}
+template<typename TOperand>
+__forceinline TProjectExp<Algorithm::Multiply<>, TOperand> Product(const TExp<TOperand>& param, const TensorShape& axes = { -1 }, const bool keepDim = false)
+{
+	return ProductExp(param, axes, keepDim);
+}
 
-	template<typename TParam>
-	__forceinline TUnaryExp<LogOp, TParam> Log(const TExp<TParam>& param)
-	{
-		return LogExp(param);
-	}
+template<typename TOperand>
+__forceinline TProjectExp<Algorithm::Max<>, TOperand> Max(const TExp<TOperand>& param, const TensorShape& axes = { -1 }, const bool keepDim = false)
+{
+	return MaxExp(param, axes, keepDim);
+}
 
-	template<typename TParam>
-	__forceinline TUnaryExp<SinOp, TParam> Sin(const TExp<TParam>& param)
-	{
-		return SinExp(param);
-	}
+template<typename TOperand>
+__forceinline auto Mean(const TExp<TOperand>& x, const TensorShape& axes = { -1 }, const bool keepDim = false)
+{
+	auto sum = Sum(x, axes, keepDim);
 
-	template<typename TParam>
-	__forceinline TUnaryExp<CosOp, TParam> Cos(const TExp<TParam>& param)
-	{
-		return CosExp(param);
-	}
+	float invDivisor = sum.Self().Shape().LinearSize() / float(x.Self().Shape().LinearSize());
+	auto mean = sum * Scalar(invDivisor);
 
-	template<typename TParam>
-	__forceinline TUnaryExp<TanOp, TParam> Tan(const TExp<TParam>& param)
-	{
-		return TanExp(param);
-	}
+	return mean;
+}
 
-	template<typename TParam>
-	__forceinline TUnaryExp<AbsOp, TParam> Abs(const TExp<TParam>& param)
-	{
-		return AbsExp(param);
-	}
+template<typename TOperand>
+__forceinline auto Variance(const TExp<TOperand>& x, const TensorShape& axes = { -1 }, const bool keepDim = false)
+{
+	auto mean = Mean(x, axes, keepDim);
+	auto centeredX = x - mean;
+	auto variance = Mean(centeredX * centeredX, axes, keepDim);
 
-	template<typename TParam>
-	__forceinline TUnaryExp<ReluOp, TParam> ReluActivate(const TExp<TParam>& param)
-	{
-		return ReluActivateExp(param);
-	}
+	return variance;
+}
 
-	template<typename TLhs, typename TRhs>
-	__forceinline TBinaryExp<ReluGradOp, TLhs, TRhs> ReluGradient(const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
-	{
-		return ReluGradExp(lhs, rhs);
-	}
+template<typename TOperand>
+__forceinline auto StandardDeviation(const TExp<TOperand>& x, const TensorShape& axes = { -1 }, const bool keepDim = false)
+{
+	auto variance = Variance(x, axes, keepDim);
 
-	template<typename TLhs, typename TRhs>
-	__forceinline TDotExp<TLhs, TRhs> Dot(const TExp<TLhs>& lhs, const TExp<TRhs>& rhs)
-	{
-		return DotExp(lhs, rhs);
-	}
+	return Sqrt(variance + Scalar(1e-5f));
+}
 
-	template<typename TOperand>
-	__forceinline TProjectExp<Algorithm::Plus<>, TOperand> Sum(const TExp<TOperand>& param, const TensorShape& axes = { -1 }, const bool keepDim = false)
-	{
-		return SumExp(param, axes, keepDim);
-	}
+template<typename... Shape>
+static TConstantExp Zeroes(Shape&&... shape)
+{
+	return TConstantExp(0.0f, Forward<Shape>(shape)...);
+}
 
-	template<typename TOperand>
-	__forceinline TProjectExp<Algorithm::Multiply<>, TOperand> Product(const TExp<TOperand>& param, const TensorShape& axes = { -1 }, const bool keepDim = false)
-	{
-		return ProductExp(param, axes, keepDim);
-	}
-
-	template<typename TOperand>
-	__forceinline TProjectExp<Algorithm::Max<>, TOperand> Max(const TExp<TOperand>& param, const TensorShape& axes = { -1 }, const bool keepDim = false)
-	{
-		return MaxExp(param, axes, keepDim);
-	}
-
-	template<typename TOperand>
-	__forceinline auto Mean(const TExp<TOperand>& x, const TensorShape& axes = { -1 }, const bool keepDim = false)
-	{
-		auto sum = Sum(x, axes, keepDim);
-
-		float invDivisor = sum.Self().Shape().LinearSize() / float(x.Self().Shape().LinearSize());
-		auto mean = sum * Scalar(invDivisor);
-
-		return mean;
-	}
-
-	template<typename TOperand>
-	__forceinline auto Variance(const TExp<TOperand>& x, const TensorShape& axes = { -1 }, const bool keepDim = false)
-	{
-		auto mean = Mean(x, axes, keepDim);
-		auto centeredX = x - mean;
-		auto variance = Mean(centeredX * centeredX, axes, keepDim);
-
-		return variance;
-	}
-
-	template<typename TOperand>
-	__forceinline auto StandardDeviation(const TExp<TOperand>& x, const TensorShape& axes = { -1 }, const bool keepDim = false)
-	{
-		auto variance = Variance(x, axes, keepDim);
-
-		return TensorExpr::Sqrt(variance + Scalar(1e-5f));
-	}
-
-	template<typename... Shape>
-	static TConstantExp Zeroes(Shape&&... shape)
-	{
-		return TConstantExp(0.0f, Forward<Shape>(shape)...);
-	}
-
-	template<typename... Shape>
-	static TConstantExp Ones(Shape&&... shape)
-	{
-		return TConstantExp(1.0f, Forward<Shape>(shape)...);
-	}
+template<typename... Shape>
+static TConstantExp Ones(Shape&&... shape)
+{
+	return TConstantExp(1.0f, Forward<Shape>(shape)...);
 }

@@ -7,10 +7,10 @@ namespace EDX
 	namespace DeepLearning
 	{
 		static const int MAX_INPUT = 8;
-		class Sum : public SymbolBase<MAX_INPUT, 1>
+		class SumSymbol : public SymbolBase<MAX_INPUT, 1>
 		{
 		public:
-			Sum(const Array<Symbol*>& inputs)
+			SumSymbol(const Array<Symbol*>& inputs)
 			{
 				mNumInputs = inputs.Size();
 

@@ -47,7 +47,7 @@ namespace EDX
 
 			net.totalVariationLoss = NeuralNet::Create<TotalVariationLoss>(net.transferNet.input);
 
-			net.styleLossSum = NeuralNet::Create<Sum>(Array<Symbol*>({ net.styleLoss1, net.styleLoss2, net.styleLoss3, net.styleLoss4, net.styleLoss5 }));
+			net.styleLossSum = NeuralNet::Create<SumSymbol>(Array<Symbol*>({ net.styleLoss1, net.styleLoss2, net.styleLoss3, net.styleLoss4, net.styleLoss5 }));
 
 			net.transferLoss = NeuralNet::Create<StyleTransferLoss>(net.contentLoss, net.styleLossSum, net.totalVariationLoss, contentWeight, styleWeight, totalVariationWeight);
 

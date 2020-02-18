@@ -547,11 +547,13 @@ namespace EDX
 			CPU, GPU
 		};
 
-		template<class T, DeviceType TDeviceType = CPU>
+		template<class T, DeviceType TDeviceType = GPU>
 		class Tensor : public TExp<Tensor<T, TDeviceType>>
 		{
 		protected:
 			T* mpData;
+			mutable Tensor* mpGrad = nullptr;
+			mutable bool mbRequiresGrad = false;
 			mutable bool mbDataOwner = true;
 
 		public:
@@ -596,8 +598,9 @@ namespace EDX
 				this->operator=(Move(rhs));
 			}
 
-			Tensor(const T& val)
+			Tensor(const T& val, const bool requiresGrad = false)
 				: mpData(nullptr)
+				, mbRequiresGrad(requiresGrad)
 			{
 				this->operator=(val);
 			}
@@ -614,6 +617,8 @@ namespace EDX
 					cudaMemcpy(mpData, rhs.Data(), LinearSize() * sizeof(T), cudaMemcpyHostToDevice);
 
 				mbDataOwner = rhs.IsDataOwner();
+				mbRequiresGrad = rhs.mbRequiresGrad;
+				mpGrad = rhs.mpGrad;
 			}
 
 			Tensor& operator = (const Tensor& rhs)
@@ -626,6 +631,8 @@ namespace EDX
 					cudaMemcpy(mpData, rhs.mpData, LinearSize() * sizeof(T), cudaMemcpyDeviceToDevice);
 
 				mbDataOwner = rhs.mbDataOwner;
+				mbRequiresGrad = rhs.mbRequiresGrad;
+				mpGrad = rhs.mpGrad;
 				return *this;
 			}
 
@@ -648,6 +655,8 @@ namespace EDX
 				mParams = rhs.mParams;
 				mpData = rhs.mpData;
 				mbDataOwner = rhs.mbDataOwner;
+				mbRequiresGrad = rhs.mbRequiresGrad;
+				mpGrad = rhs.mpGrad;
 				rhs.mbDataOwner = false;
 				return *this;
 			}
@@ -658,6 +667,8 @@ namespace EDX
 				mParams = rhs.mParams;
 				mpData = rhs.mpData;
 				mbDataOwner = rhs.mbDataOwner;
+				mbRequiresGrad = rhs.mbRequiresGrad;
+				mpGrad = rhs.mpGrad;
 				rhs.mbDataOwner = false;
 				return *this;
 			}
@@ -697,6 +708,7 @@ namespace EDX
 			{
 				const EType& src = rhs.Self();
 				Resize(src.Shape());
+				src.Preprocess();
 
 				if (TDeviceType == CPU)
 				{
@@ -716,6 +728,29 @@ namespace EDX
 				return *this;
 			}
 
+			template<typename EType>
+			inline void Forward(const TExp<EType>& rhs, const bool bForceRecompute = false)
+			{
+				const EType& src = rhs.Self();
+				Resize(src.Shape());
+				src.Preprocess(bForceRecompute);
+
+				if (TDeviceType == CPU)
+				{
+					//parallel_for(0u, (uint)LinearSize(), [&](int i)
+					for (int i = 0; i < LinearSize(); i++)
+					{
+						mpData[i] = src.Eval(i, mParams);
+					}
+				}
+				else if (TDeviceType == GPU)
+				{
+#ifdef __CUDACC__
+					InvokeExecuteExpression(src, mpData, mParams);
+#endif
+				}
+			}
+
 			TENSOR_INLINE T Eval(const int idx, const TensorParams& broadcastIndex) const
 			{
 				TensorShape selfIndex;
@@ -732,25 +767,22 @@ namespace EDX
 				return this->operator[](selfIndex);
 			}
 
-			TENSOR_INLINE T ForwardDiff(const int idx, const TensorParams& broadcastIndex, const Tensor<T, TDeviceType>& dx) const
+			template<typename TGrad>
+			void Backward(const TExp<TGrad>& inGrad) const
 			{
-				if (dx.Data() == mpData)
+				if (mbRequiresGrad)
 				{
-					return 1;
-				}
-				else
-				{
-					return 0;
+					*mpGrad += inGrad.Self();
 				}
 			}
 
-			__forceinline void PreprocessDiff(const Tensor<T, TDeviceType>& dx) const
+			__forceinline void Preprocess(const bool bForceRecompute = false) const
 			{
 			}
 
-			__forceinline const Tensor<T, TDeviceType>& GetValue() const
+			__forceinline const Tensor<T, TDeviceType>& GetGrad() const
 			{
-				return *this;
+				return *mpGrad;
 			}
 
 			TENSOR_INLINE void Set(const int idx, const TensorParams& broadcastIndex, const T val)
@@ -769,32 +801,37 @@ namespace EDX
 				this->operator[](selfIndex) = val;
 			}
 
-			Tensor(NestedInitializerList<T, 1> initList)
+			Tensor(NestedInitializerList<T, 1> initList, const bool requiresGrad = false)
 				: mpData(nullptr)
+				, mbRequiresGrad(requiresGrad)
 			{
 				this->operator=(initList);
 			}
 
-			Tensor(NestedInitializerList<T, 2> initList)
+			Tensor(NestedInitializerList<T, 2> initList, const bool requiresGrad = false)
 				: mpData(nullptr)
+				, mbRequiresGrad(requiresGrad)
 			{
 				this->operator=(initList);
 			}
 
-			Tensor(NestedInitializerList<T, 3> initList)
+			Tensor(NestedInitializerList<T, 3> initList, const bool requiresGrad = false)
 				: mpData(nullptr)
+				, mbRequiresGrad(requiresGrad)
 			{
 				this->operator=(initList);
 			}
 
-			Tensor(NestedInitializerList<T, 4> initList)
+			Tensor(NestedInitializerList<T, 4> initList, const bool requiresGrad = false)
 				: mpData(nullptr)
+				, mbRequiresGrad(requiresGrad)
 			{
 				this->operator=(initList);
 			}
 
-			Tensor(NestedInitializerList<T, 5> initList)
+			Tensor(NestedInitializerList<T, 5> initList, const bool requiresGrad = false)
 				: mpData(nullptr)
+				, mbRequiresGrad(requiresGrad)
 			{
 				this->operator=(initList);
 			}
@@ -877,6 +914,13 @@ namespace EDX
 					Assert(mpData);
 
 					Clear();
+
+					if (mbRequiresGrad)
+					{
+						if (!mpGrad)
+							mpGrad = new Tensor;
+						mpGrad->Resize(shape);
+					}
 				}
 				else if (Shape() != shape)
 				{
@@ -918,12 +962,16 @@ namespace EDX
 			Tensor Reshape(Shape... shape)
 			{
 				mParams.Reshape(shape...);
+				if (mpGrad)
+					mpGrad->Reshape(shape...);
 				return *this;
 			}
 
 			Tensor Reshape(const TensorShape& shape)
 			{
 				mParams.Reshape(shape);
+				if (mpGrad)
+					mpGrad->Reshape(shape);
 				return *this;
 			}
 
@@ -932,6 +980,8 @@ namespace EDX
 				Tensor ret;
 				ret.mParams = mParams;
 				ret.mpData = mpData;
+				ret.mbRequiresGrad = mbRequiresGrad;
+				ret.mpGrad = mpGrad;
 				ret.mbDataOwner = false;
 
 				ret.mParams.Transpose(transposeDim);
@@ -953,6 +1003,8 @@ namespace EDX
 				ret.mParams = mParams;
 				ret.mParams.Reshape(shape);
 				ret.mpData = mpData;
+				ret.mbRequiresGrad = mbRequiresGrad;
+				ret.mpGrad = mpGrad;
 				ret.mbDataOwner = false;
 				return ret;
 			}
@@ -971,6 +1023,8 @@ namespace EDX
 				ret.mParams = mParams;
 				ret.mParams.Reshape(shape);
 				ret.mpData = mpData;
+				ret.mbRequiresGrad = mbRequiresGrad;
+				ret.mpGrad = mpGrad;
 				ret.mbDataOwner = false;
 				return ret;
 			}
@@ -996,6 +1050,8 @@ namespace EDX
 
 				ret.mpData = &this->operator()(filledIndex);
 				ret.mParams = mParams.GetSliceIndex(index.Size());
+				ret.mbRequiresGrad = mbRequiresGrad;
+				ret.mpGrad = mpGrad;
 				ret.mbDataOwner = false;
 				return ret;
 			}
@@ -1022,6 +1078,8 @@ namespace EDX
 
 				ret.mpData = (T*)&this->operator()(filledIndex);
 				ret.mParams = mParams.GetSliceIndex(index.Size());
+				ret.mbRequiresGrad = mbRequiresGrad;
+				ret.mpGrad = mpGrad;
 				ret.mbDataOwner = false;
 				return ret;
 			}
@@ -1034,6 +1092,8 @@ namespace EDX
 
 				ret.mpData = mpData + from * mParams.Stride(0);
 				ret.mParams = mParams.GetSectionIndex(to - from);
+				ret.mbRequiresGrad = mbRequiresGrad;
+				ret.mpGrad = mpGrad;
 				ret.mbDataOwner = false;
 
 				return ret;
@@ -1047,6 +1107,8 @@ namespace EDX
 
 				ret.mpData = mpData + from * mParams.Stride(0);
 				ret.mParams = mParams.GetSectionIndex(to - from);
+				ret.mbRequiresGrad = mbRequiresGrad;
+				ret.mpGrad = mpGrad;
 				ret.mbDataOwner = false;
 
 				return ret;
@@ -1123,6 +1185,14 @@ namespace EDX
 			TENSOR_INLINE bool Empty() const
 			{
 				return LinearSize() == 0;
+			}
+			TENSOR_INLINE bool RequiresGrad() const
+			{
+				return mbRequiresGrad;
+			}
+			TENSOR_INLINE void SetRequiresGrad(const bool requiresGrad)
+			{
+				mbRequiresGrad = requiresGrad;
 			}
 
 			template<typename... Index>
@@ -1314,9 +1384,10 @@ namespace EDX
 			// ----------------------------------------------------------------
 			// Common utilities for tensors
 			// ----------------------------------------------------------------
-			static Tensor<T, TDeviceType> LinSpace(const T& start, const T& stop, const int& numSamples)
+			static Tensor<T, TDeviceType> LinSpace(const T& start, const T& stop, const int& numSamples, const bool requiresGrad = false)
 			{
 				Tensor<T, TDeviceType> ret;
+				ret.SetRequiresGrad(requiresGrad);
 				ret.Resize(numSamples);
 
 				T step = (stop - start) / T(numSamples - 1);
@@ -1340,9 +1411,10 @@ namespace EDX
 				return ret;
 			}
 
-			static Tensor<T, TDeviceType> ArrayRange(const T& start, const T& stop, const T& step = 1)
+			static Tensor<T, TDeviceType> ArrayRange(const T& start, const T& stop, const T& step, const bool requiresGrad = false)
 			{
 				Tensor<T, TDeviceType> ret;
+				ret.SetRequiresGrad(requiresGrad);
 
 				if (stop <= start)
 					return ret;
@@ -1369,10 +1441,9 @@ namespace EDX
 				return ret;
 			}
 
-			static Tensor<T, TDeviceType> ArrayRange(const T& stop)
+			static Tensor<T, TDeviceType> ArrayRange(const T& stop, const bool requiresGrad = false)
 			{
-				T start = 0;
-				return ArrayRange(0, stop, 1);
+				return ArrayRange(0, stop, 1, requiresGrad);
 			}
 
 			static Tensor<T, TDeviceType> Identity(const int N)
@@ -1654,7 +1725,7 @@ namespace EDX
 
 				Tensor<T, TDeviceType> variance = Tensorf::Mean(centeredX * centeredX, axes, keepDim);
 
-				return TensorExpr::Sqrt(variance + Scalar(1e-5f));
+				return Sqrt(variance + Scalar(1e-5f));
 			}
 
 			template<typename... Shape>
@@ -1810,9 +1881,45 @@ namespace EDX
 				}
 			}
 
+			static TensorShape ProjectionShape(const TensorShape& inShape, const TensorShape& axes, const bool keepDim)
+			{
+				if (axes.Size() == 0)
+					return inShape;
+
+				if (axes.Size() == 1 && axes[0] == -1)
+				{
+					return { 1 };
+				}
+
+				TensorShape projShape;
+				for (int i = 0; i < inShape.Size(); i++)
+				{
+					if (!keepDim)
+					{
+						if (!axes.Contains(i))
+							projShape.Add(inShape[i]);
+					}
+					else
+					{
+						if (axes.Contains(i))
+							projShape.Add(1);
+						else
+							projShape.Add(inShape[i]);
+					}
+				}
+
+				if (projShape.Empty())
+					projShape.Add(1);
+
+				return projShape;
+			}
+
 			template<typename Op>
 			static Tensor<T, TDeviceType> ProjectionOp(const Tensor<T, TDeviceType>& lhs, const TensorShape& axes, const bool keepDim, Op op, T initVal)
 			{
+				if (axes.Size() == 0)
+					return lhs;
+
 				if (axes.Size() == 1 && axes[0] == -1)
 				{
 					if (TDeviceType == CPU)
@@ -1972,6 +2079,9 @@ namespace EDX
 			static Tensor<T, TDeviceType> Unbroadcast(const Tensor<T, TDeviceType>& tensor, const TensorShape& target)
 			{
 				TensorShape shape = tensor.Shape();
+				if (shape == target)
+					return tensor;
+
 				TensorShape axes;
 
 				if (target.LinearSize() == 1)
@@ -2006,37 +2116,11 @@ namespace EDX
 		};
 		
 
-		template<typename EType, typename T, DeviceType TDeviceType>
-		inline const Tensor<T, TDeviceType> Backward(const TExp<EType>& rhs, const Tensor<T, TDeviceType>& dx)
-		{
-			const EType& src = rhs.Self();
-
-			Tensor<T, TDeviceType> ret;
-			ret.Resize(dx.Shape());
-
-			src.PreprocessDiff(dx);
-
-			if (TDeviceType == CPU)
-			{
-				//parallel_for(0u, (uint)ret.LinearSize(), [&](int i)
-				for (int i = 0; i < ret.LinearSize(); i++)
-				{
-					ret[i] = src.ForwardDiff(i, ret.mParams, dx);
-				}
-			}
-			else if (TDeviceType == GPU)
-			{
-#ifdef __CUDACC__
-				InvokeForwardDiff(src, ret.Data(), ret.mParams, dx);
-#endif
-			}
-
-			return ret;
-		}
 
 		using Tensorf = Tensor<float>;
 		using Tensord = Tensor<double>;
 		using Tensori = Tensor<int>;
+		
 		
 		#include "TemplateExpression.h"
 
@@ -2051,10 +2135,12 @@ namespace EDX
 				float originalVal = x.Get(i);
 
 				x.Set(i, originalVal + step);
-				Tensorf positive = exp;
+				Tensorf positive;
+				positive.Forward(exp, true);
 
 				x.Set(i, originalVal - step);
-				Tensorf negative = exp;
+				Tensorf negative;
+				negative.Forward(exp, true);
 
 				x.Set(i, originalVal);
 

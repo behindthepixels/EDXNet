@@ -6,7 +6,7 @@ namespace EDX
 	{
 		Symbol* Relu::Gradient(Symbol* pUpperGrads) const
 		{
-			return NeuralNet::Create<ReluGradient>(mInputs[0], pUpperGrads);
+			return NeuralNet::Create<ReluGradientSymbol>(mInputs[0], pUpperGrads);
 		}
 	}
 }

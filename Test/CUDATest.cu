@@ -3,7 +3,6 @@
 
 using namespace EDX;
 using namespace DeepLearning;
-using namespace Algorithm;
 
 void TestFullyConnectedCUDA()
 {
@@ -38,13 +37,13 @@ void TestFullyConnectedCUDA()
 	Tensorf correctResult = Tensorf({ { 1.49834967f, 1.70660132f, 1.91485297f },
 										{ 3.25553199f, 3.5141327f, 3.77273342f } });
 
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(result - correctResult))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(result - correctResult))) << "\n";
 
 	Tensorf& dataGrad = symbolsToEvaluate[0]->GetOutput(data->GetGradientIndex());
 	Tensorf& weightsGrad = symbolsToEvaluate[1]->GetOutput(weights->GetGradientIndex());
 	Tensorf& biasesGrad = symbolsToEvaluate[2]->GetOutput(biases->GetGradientIndex());
 
-	Tensorf upperGrads = TensorExpr::Ones(result.Shape());
+	Tensorf upperGrads = Ones(result.Shape());
 	Tensorf dataNumericalGrad = NumericalGradientEval([&]() -> Tensorf
 	{
 		net.Execute({ fullyConnected });
@@ -64,9 +63,9 @@ void TestFullyConnectedCUDA()
 	},
 		biases, upperGrads);
 
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(dataGrad - dataNumericalGrad))) << "\n";
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(weightsGrad - numericalWeightsGrad))) << "\n";
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(biasesGrad - numericalBiasesGrad))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(dataGrad - dataNumericalGrad))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(weightsGrad - numericalWeightsGrad))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(biasesGrad - numericalBiasesGrad))) << "\n";
 
 	NeuralNet::Release();
 }
@@ -110,13 +109,13 @@ bool TestConvolutionCUDA()
 			{{2.36270298f, 2.36904306f},
 			{2.38090835f, 2.38247847f}}} });
 
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(result - correctResult))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(result - correctResult))) << "\n";
 
 	Tensorf& dataGrad = symbolsToEvaluate[0]->GetOutput(data->GetGradientIndex());
 	Tensorf& weightsGrad = symbolsToEvaluate[1]->GetOutput(weights->GetGradientIndex());
 	Tensorf& biasesGrad = symbolsToEvaluate[2]->GetOutput(biases->GetGradientIndex());
 
-	Tensorf upperGrads = TensorExpr::Ones(result.Shape());
+	Tensorf upperGrads = Ones(result.Shape());
 	Tensorf dataNumericalGrad = NumericalGradientEval([&]() -> Tensorf
 	{
 		net.Execute({ convolution });
@@ -136,9 +135,9 @@ bool TestConvolutionCUDA()
 	},
 		biases, upperGrads);
 
-	std::cout << Tensorf::Sum(TensorExpr::Abs(dataGrad - dataNumericalGrad)) << "\n";
-	std::cout << Tensorf::Sum(TensorExpr::Abs(weightsGrad - numericalWeightsGrad)) << "\n";
-	std::cout << Tensorf::Sum(TensorExpr::Abs(biasesGrad - numericalBiasesGrad)) << "\n";
+	std::cout << Tensorf::Sum(Abs(dataGrad - dataNumericalGrad)) << "\n";
+	std::cout << Tensorf::Sum(Abs(weightsGrad - numericalWeightsGrad)) << "\n";
+	std::cout << Tensorf::Sum(Abs(biasesGrad - numericalBiasesGrad)) << "\n";
 
 	NeuralNet::Release();
 
@@ -164,11 +163,11 @@ bool TestReluCUDA()
 									{ 0.0f, 0.0f, 0.04545455f, 0.13636364f, },
 									{ 0.22727273f, 0.31818182f, 0.40909091f, 0.5f, } });
 
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(result - correctResult))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(result - correctResult))) << "\n";
 
 	Tensorf& dx = symbolsToEvaluate[0]->GetOutput(0);
 
-	Tensorf upperGrads = TensorExpr::Ones(result.Shape());
+	Tensorf upperGrads = Ones(result.Shape());
 	Tensorf dxNumerical = NumericalGradientEval([&]() -> Tensorf
 		{
 			net.Execute({ relu });
@@ -176,7 +175,7 @@ bool TestReluCUDA()
 		},
 		x, upperGrads);
 
-	std::cout << Tensorf::Sum(Tensorf(TensorExpr::Abs(dx - dxNumerical))) << "\n";
+	std::cout << Tensorf::Sum(Tensorf(Abs(dx - dxNumerical))) << "\n";
 
 	NeuralNet::Release();
 
@@ -213,11 +212,11 @@ void TestPoolingCUDA()
 											{ { 0.32631579f, 0.34105263f },
 											{ 0.38526316f, 0.4f } } } });
 
-	std::cout << Tensorf::Sum(TensorExpr::Abs(result - correctResult)) << "\n";
+	std::cout << Tensorf::Sum(Abs(result - correctResult)) << "\n";
 
 	Tensorf& dx = symbolsToEvaluate[0]->GetOutput(0);
 
-	Tensorf upperGrads = TensorExpr::Ones(result.Shape());
+	Tensorf upperGrads = Ones(result.Shape());
 	Tensorf dxNumerical = NumericalGradientEval([&]() -> Tensorf
 		{
 			net.Execute({ pooling });
@@ -225,7 +224,7 @@ void TestPoolingCUDA()
 		},
 		x, upperGrads);
 
-	std::cout << Tensorf::Sum(TensorExpr::Abs(dx - dxNumerical)) << "\n";
+	std::cout << Tensorf::Sum(Abs(dx - dxNumerical)) << "\n";
 
 	NeuralNet::Release();
 }
@@ -252,11 +251,11 @@ void TestSoftmaxCUDA()
 	Tensorf result = softmax->GetOutput();
 	Tensorf correctResult = 2.3f;
 
-	std::cout << Tensorf::Sum(TensorExpr::Abs(result - correctResult)) << "\n";
+	std::cout << Tensorf::Sum(Abs(result - correctResult)) << "\n";
 
 	Tensorf& dx = symbolsToEvaluate[0]->GetOutput(0);
 
-	Tensorf upperGrads = TensorExpr::Ones(result.Shape());
+	Tensorf upperGrads = Ones(result.Shape());
 	Tensorf dxNumerical = NumericalGradientEval([&]() -> Tensorf
 		{
 			net.Execute({ softmax });
@@ -264,59 +263,61 @@ void TestSoftmaxCUDA()
 		},
 		x, upperGrads);
 
-	std::cout << Tensorf::Sum(TensorExpr::Abs(dx - dxNumerical)) << "\n";
+	std::cout << Tensorf::Sum(Abs(dx - dxNumerical)) << "\n";
 
 	NeuralNet::Release();
 }
 
 void TestCUDA()
 {
+	TestFullyConnectedCUDA();
+	TestConvolutionCUDA();
+	TestReluCUDA();
+	TestPoolingCUDA();
+	TestSoftmaxCUDA();
+
+
 	{
 		Tensorf A = { 1,2,3,4,5,8,3,1,4 };
 		Tensorf B = NestedInitializerList<float, 2>({ {1},{2},{3},{4},{5} });
 
 		Tensorf C = A + B + A + A * B;
 
-		float pHostC[45] = { 0 };
-		cudaMemcpy((void*)pHostC, (void*)C.Data(), C.LinearSize() * sizeof(float), cudaMemcpyDeviceToHost);
+		std::cout << C << "\n";
 	}
 
 	{
 		Tensorf A = { 9,2,3,4,5 };
 		Tensorf B = { 9,2,3,4,5 };
 
-		A += TensorExpr::Exp(B);
+		A += Exp(B);
 
-		float pHostA[5] = { 0 };
-		cudaMemcpy((void*)pHostA, (void*)A.Data(), A.LinearSize() * sizeof(float), cudaMemcpyDeviceToHost);
+		std::cout << A << "\n";
 	}
 
 	{
 		Tensorf A = { { 9,2,3,4,5 } };
 		Tensorf B = NestedInitializerList<float, 2>({ {1},{2},{3},{4},{5} });
 
-		Tensorf C = TensorExpr::Dot((A + B) * TensorExpr::Sum(Tensorf::LinSpace(0, 128, 128)), B) * B;
+		Tensorf C = Dot((A + B) * Sum(Tensorf::LinSpace(0, 128, 128)), B) * B;
 
-		float pHostA[25] = { 0 };
-		cudaMemcpy((void*)pHostA, (void*)C.Data(), C.LinearSize() * sizeof(float), cudaMemcpyDeviceToHost);
+		std::cout << C << "\n";
 	}
 
 	{
 		Tensorf A = Tensorf::LinSpace(0, 40960, 40960);
-		Tensorf sum = TensorExpr::StandardDeviation(A);
+		Tensorf std = StandardDeviation(A);
 
-		float pHost[1] = { 0 };
-		cudaMemcpy((void*)pHost, (void*)sum.Data(), sum.LinearSize() * sizeof(float), cudaMemcpyDeviceToHost);
+		std::cout << std << "\n";
 	}
 
 	{
-		Tensorf A = Tensorf::ArrayRange(0, 1000);
+		Tensorf A = Tensorf::ArrayRange(0, 1000, 1.0);
 		A.Reshape(5, 10, 4, 5);
 
-		Tensorf sum = TensorExpr::Sum(A, { 0, 2 }, true);
+		Tensorf sum = Sum(A, { 0, 2 }, true);
 
-		float pHost[50] = { 0 };
-		cudaMemcpy((void*)pHost, (void*)sum.Data(), sum.LinearSize() * sizeof(float), cudaMemcpyDeviceToHost);
+		std::cout << sum << "\n";
 	}
 
 	{
@@ -325,42 +326,36 @@ void TestCUDA()
 
 		Tensorf C = Tensorf::Dot(B, A);
 
-		float pHost[25] = { 0 };
-		cudaMemcpy((void*)pHost, (void*)C.Data(), C.LinearSize() * sizeof(float), cudaMemcpyDeviceToHost);
+		std::cout << C << "\n";
 	}
 
 	{
-		Tensorf A = { 5, 5, 5, 5, 5 };
-		Tensorf B = { 2, 2, 2, 2, 2 };
-		Tensorf C = { 7, 7, 7, 7, 7 };
+		Tensorf A = Tensorf::LinSpace(0, 10, 10, true);
+		auto exp = StandardDeviation(A);
+		Tensorf std = exp;
+		exp.Backward(Ones(exp.Shape()));
 
-		auto exp = A * B + A * C + B * C;
-		Tensorf results = exp;
+		Tensorf diff = A.GetGrad();
+		std::cout << diff << "\n";
 
-		Tensorf diff = Backward(exp, A);
-
-		float pHost[5] = { 0 };
-		cudaMemcpy((void*)pHost, (void*)diff.Data(), diff.LinearSize() * sizeof(float), cudaMemcpyDeviceToHost);
-	}
-
-	{
-		Tensorf A = { 5, 5, 5, 5, 5 };
-		Tensorf B = { 2, 2, 2, 2, 2 };
-		Tensorf C = { 7, 7, 7, 7, 7 };
-
-		auto exp = TensorExpr::Sin(A * B) * TensorExpr::Tan(C) + TensorExpr::Square(TensorExpr::Cos(A * C)) + B * C;
-		Tensorf results = exp;
-
-		Tensorf diff = Backward(exp, A);
 		Tensorf numericalDiff = NumericalGradientEval(exp, A);
-
-		float pHost[5] = { 0 };
-		cudaMemcpy((void*)pHost, (void*)diff.Data(), diff.LinearSize() * sizeof(float), cudaMemcpyDeviceToHost);
+		std::cout << numericalDiff << "\n";
 	}
 
-	TestFullyConnectedCUDA();
-	TestConvolutionCUDA();
-	TestReluCUDA();
-	TestPoolingCUDA();
-	TestSoftmaxCUDA();
+	{
+		Tensorf A = Tensorf::ArrayRange(10, true).Reshape(2, 5);
+		Tensorf B = Tensorf::ArrayRange(10, true).Reshape(5, 2);
+		Tensorf C({ 7 }, true);
+
+		auto exp = Dot(Dot(B, A) * Log(C), Sin(B)) * Sum(Square(Cos(A * C))) + C;
+		Tensorf results = exp;
+
+		exp.Backward(Ones(exp.Shape()));
+
+		Tensorf diff = A.GetGrad();
+		std::cout << diff << "\n";
+
+		Tensorf numericalDiff = NumericalGradientEval(exp, A);
+		std::cout << numericalDiff << "\n";
+	}
 }

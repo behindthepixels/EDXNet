@@ -18,7 +18,7 @@ namespace EDX
 			Tensorf& biases = mInputs[2]->GetOutput();
 
 			weights = Tensorf::RandomNormalDistribution(0.1f, dim, mNumHidden);
-			biases = TensorExpr::Zeroes(mNumHidden);
+			biases = Zeroes(mNumHidden);
 
 			Tensorf& output = GetOutput();
 			output.Resize(N, mNumHidden);

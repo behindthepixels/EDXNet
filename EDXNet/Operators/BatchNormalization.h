@@ -42,11 +42,11 @@ namespace EDX
 
 				if (mTraining)
 				{
-					Tensorf mean = TensorExpr::Sum(X, { 0 }) / Scalar(float(N));
+					Tensorf mean = Sum(X, { 0 }) / Scalar(float(N));
 					Tensorf centeredX = X - mean;
 					Tensorf centeredX2 = centeredX * centeredX;
-					Tensorf variance = TensorExpr::Sum(centeredX2, { 0 }) / Scalar(float(N));
-					Tensorf stdDiv = TensorExpr::Sqrt(variance + Scalar(1e-5f));
+					Tensorf variance = Sum(centeredX2, { 0 }) / Scalar(float(N));
+					Tensorf stdDiv = Sqrt(variance + Scalar(1e-5f));
 					Tensorf invStdDiv = Tensorf(1.0f) / stdDiv;
 					Tensorf correctedX = centeredX * invStdDiv;
 
@@ -64,7 +64,7 @@ namespace EDX
 				}
 				else
 				{
-					Tensorf correctedX = (X - runningMean) / TensorExpr::Sqrt(runningVar + Scalar(1e-4f));
+					Tensorf correctedX = (X - runningMean) / Sqrt(runningVar + Scalar(1e-4f));
 					GetOutput(0) = scale * correctedX + bias;
 				}
 			}
@@ -105,7 +105,7 @@ namespace EDX
 				Tensorf& upperGrads = mInputs[4]->GetOutput();
 
 				Tensorf& dBias = GetOutput(2);
-				dBias = TensorExpr::Sum(upperGrads, { 0 });
+				dBias = Sum(upperGrads, { 0 });
 
 				const int N = mInputs[0]->GetOutput().Shape(0);
 				Tensorf& centeredX = mInputs[3]->GetOutput(3);
@@ -113,13 +113,13 @@ namespace EDX
 				Tensorf& variance = mInputs[3]->GetOutput(5);
 
 				Tensorf& dScale = GetOutput(1);
-				dScale = TensorExpr::Sum(centeredX * invStdDiv * upperGrads, { 0 });
+				dScale = Sum(centeredX * invStdDiv * upperGrads, { 0 });
 
 				Tensorf& scale = mInputs[1]->GetOutput();
 
 				Tensorf& dx = GetOutput(0);
 				dx = Scalar(1.0f / float(N)) * scale * invStdDiv *
-					(Scalar(N) * upperGrads - dBias - centeredX / (variance + Scalar(1e-5f)) * TensorExpr::Sum(upperGrads * centeredX, { 0 }));
+					(Scalar(N) * upperGrads - dBias - centeredX / (variance + Scalar(1e-5f)) * Sum(upperGrads * centeredX, { 0 }));
 
 				mInputs[0]->SetGradientIndex(0);
 				mInputs[1]->SetGradientIndex(1);

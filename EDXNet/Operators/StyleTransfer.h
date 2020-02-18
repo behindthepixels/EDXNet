@@ -25,7 +25,7 @@ namespace EDX
 
 				Tensorf& loss = GetOutput();
 				const int featureSize = image.LinearSize();
-				loss = TensorExpr::Sum(contentDiffSqr) / Scalar(2.0f * Math::Sqrt(featureSize));
+				loss = Sum(contentDiffSqr) / Scalar(2.0f * Math::Sqrt(featureSize));
 
 				GetOutput(1) = contentDiff;
 			}
@@ -93,7 +93,7 @@ namespace EDX
 
 				const int featureSize = image.LinearSize();
 				Tensorf& loss = GetOutput();
-				loss = TensorExpr::Sum(gramMatrixDiffSqr) / Scalar(4.0f * featureSize * featureSize);
+				loss = Sum(gramMatrixDiffSqr) / Scalar(4.0f * featureSize * featureSize);
 
 				GetOutput(1) = gramMatrixDiff;
 			}
@@ -214,7 +214,7 @@ namespace EDX
 				}
 
 				Tensorf& loss = GetOutput(0);
-				loss = TensorExpr::Sum(gradientLength);
+				loss = Sum(gradientLength);
 			}
 
 			Symbol* Gradient(Symbol* pUpperGrads) const override;
@@ -391,7 +391,7 @@ namespace EDX
 				image.Reshape(numChannel, numPixels);
 
 				Tensorf& output = GetOutput(0);
-				output = TensorExpr::Sum(Tensorf::Dot(image, Tensorf::Dot(mLaplacianMatrix, Tensorf::Transpose(image))));
+				output = Sum(Tensorf::Dot(image, Tensorf::Dot(mLaplacianMatrix, Tensorf::Transpose(image))));
 			}
 
 			Symbol* Gradient(Symbol* pUpperGrads) const override;
